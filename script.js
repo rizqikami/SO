@@ -1,14 +1,21 @@
 let inventory = {};
 let scanData = JSON.parse(localStorage.getItem('stokOpnameData')) || [];
+let petugas = localStorage.getItem('namaPetugas');
 
-// 1. Load Database (Hanya ambil kolom 0 dan 1, abaikan kolom 2/kuantitas)
+// Inisialisasi Nama Petugas
+if (!petugas) {
+    petugas = prompt("Masukkan nama petugas stok opname:") || "Anonim";
+    localStorage.setItem('namaPetugas', petugas);
+}
+document.getElementById("petugas-info").innerText = "Petugas: " + petugas;
+
+// Load database item.csv
 Papa.parse("item.csv", {
     download: true,
     header: true,
     skipEmptyLines: true,
     complete: function(results) {
         results.data.forEach(item => {
-            // Mengambil barcode (index 0) dan nama (index 1)
             const keys = Object.keys(item);
             inventory[item[keys[0]]] = item[keys[1]];
         });
@@ -16,7 +23,6 @@ Papa.parse("item.csv", {
     }
 });
 
-// 2. Fungsi Update Tabel UI
 function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
@@ -25,7 +31,6 @@ function updateTable() {
     });
 }
 
-// 3. Setup Scanner
 const html5QrCode = new Html5Qrcode("reader");
 let isFlashOn = false;
 
@@ -38,8 +43,15 @@ html5QrCode.start(
 
         if (existingItem) {
             existingItem.qty += 1;
+            existingItem.timestamp = new Date().toLocaleString();
         } else {
-            scanData.push({ barcode: decodedText, nama: name, qty: 1 });
+            scanData.push({ 
+                barcode: decodedText, 
+                nama: name, 
+                qty: 1, 
+                petugas: petugas, 
+                timestamp: new Date().toLocaleString() 
+            });
         }
         
         localStorage.setItem('stokOpnameData', JSON.stringify(scanData));
@@ -48,7 +60,6 @@ html5QrCode.start(
     }
 );
 
-// 4. Toggle Flash & Export
 document.getElementById("flash-btn").addEventListener("click", () => {
     isFlashOn = !isFlashOn;
     html5QrCode.applyVideoConstraints({ advanced: [{ torch: isFlashOn }] });
@@ -56,17 +67,18 @@ document.getElementById("flash-btn").addEventListener("click", () => {
 
 function exportCSV() {
     const csv = Papa.unparse(scanData);
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([`Petugas: ${petugas}\n` + csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = "hasil_opname.csv";
+    a.download = `StokOpname_${petugas}_${new Date().toLocaleDateString()}.csv`;
     a.click();
 }
 
 function resetData() {
     if(confirm("Hapus semua hasil scan?")) {
         localStorage.removeItem('stokOpnameData');
+        localStorage.removeItem('namaPetugas');
         location.reload();
     }
 }
