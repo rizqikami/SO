@@ -2,7 +2,7 @@ let inventory = {};
 let scanData = JSON.parse(localStorage.getItem('stokOpnameData')) || [];
 
 // 1. Load Database (Hanya ambil kolom 0 dan 1, abaikan kolom 2/kuantitas)
-Papa.parse("lembar_penghitungan_stok_afjtoko_260530094111.csv", {
+Papa.parse("item.csv", {
     download: true,
     header: true,
     skipEmptyLines: true,
