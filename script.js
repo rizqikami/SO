@@ -1,16 +1,22 @@
 let inventory = {};
 let scanData = JSON.parse(localStorage.getItem('stokOpnameData')) || [];
-let petugas = localStorage.getItem('namaPetugas');
 let isCameraOn = false;
 let isFlashOn = false;
 const html5QrCode = new Html5Qrcode("reader");
 
-if (!petugas) {
-    petugas = prompt("Masukkan nama petugas:") || "Anonim";
-    localStorage.setItem('namaPetugas', petugas);
+// 1. Cek Petugas
+function cekPetugas() {
+    let nama = localStorage.getItem('namaPetugas');
+    if (!nama) {
+        nama = prompt("Masukkan nama petugas:") || "Anonim";
+        localStorage.setItem('namaPetugas', nama);
+    }
+    document.getElementById("petugas-info").innerText = "Petugas: " + nama;
+    return nama;
 }
-document.getElementById("petugas-info").innerText = "Petugas: " + petugas;
+let petugas = cekPetugas();
 
+// 2. Load Database
 Papa.parse("item.csv", {
     download: true, header: true, skipEmptyLines: true,
     complete: function(results) {
@@ -22,6 +28,7 @@ Papa.parse("item.csv", {
     }
 });
 
+// 3. Fungsi Kamera
 async function toggleKamera() {
     const readerDiv = document.getElementById("reader");
     if (!isCameraOn) {
@@ -55,12 +62,9 @@ function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
     let counter = 1;
-    // Tampilkan scan terbaru di atas
     [...scanData].reverse().forEach((item, index) => {
-        // Tampilkan nomor hanya jika barcode berbeda dengan baris sebelumnya (karena reverse, cek item setelahnya)
         const nextItem = [...scanData].reverse()[index + 1];
         const isDuplicate = nextItem && item.barcode === nextItem.barcode;
-        
         tbody.innerHTML += `<tr>
             <td>${isDuplicate ? "" : "<b>" + (counter++) + ".</b>"} ${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
             <td>${item.qty}</td>
@@ -72,13 +76,11 @@ function cariBarang(query) {
     const resultsDiv = document.getElementById("search-results");
     resultsDiv.innerHTML = "";
     if (query.length < 3) return;
-
     if(isCameraOn) toggleKamera();
 
     const filtered = Object.entries(inventory).filter(([code, name]) => 
         name.toLowerCase().includes(query.toLowerCase())
     );
-
     filtered.forEach(([code, name]) => {
         const btn = document.createElement("button");
         btn.innerText = name;
@@ -117,6 +119,6 @@ function resetData() {
     if(confirm("Hapus semua hasil scan dan reset nama petugas?")) {
         localStorage.removeItem('stokOpnameData');
         localStorage.removeItem('namaPetugas');
-        location.reload();
+        setTimeout(() => { location.reload(); }, 100);
     }
 }
