@@ -5,7 +5,7 @@ let isCameraOn = false;
 let isFlashOn = false;
 const html5QrCode = new Html5Qrcode("reader");
 
-// Inisialisasi Nama Petugas
+// Inisialisasi
 if (!petugas) {
     petugas = prompt("Masukkan nama petugas stok opname:") || "Anonim";
     localStorage.setItem('namaPetugas', petugas);
@@ -20,7 +20,6 @@ Papa.parse("item.csv", {
     complete: function(results) {
         results.data.forEach(item => {
             const keys = Object.keys(item);
-            // Index 0: Barcode, Index 1: Nama
             inventory[item[keys[0]]] = item[keys[1]];
         });
         updateTable();
@@ -45,41 +44,32 @@ let lastScan = "";
 function onScanSuccess(decodedText) {
     if (decodedText === lastScan) return;
     lastScan = decodedText;
-    setTimeout(() => { lastScan = ""; }, 2000); // Jeda 2 detik
+    setTimeout(() => { lastScan = ""; }, 2000);
 
-    const existingItem = scanData.find(item => item.barcode === decodedText);
     const name = inventory[decodedText] || "Barang Tidak Ditemukan";
-
-    if (existingItem) {
-        existingItem.qty += 1;
-    } else {
-        scanData.push({ barcode: decodedText, nama: name, qty: 1, petugas: petugas, timestamp: new Date().toLocaleString() });
-    }
+    
+    // Simpan setiap scan sebagai baris baru
+    scanData.push({ 
+        barcode: decodedText, 
+        nama: name, 
+        qty: 1, 
+        petugas: petugas, 
+        timestamp: new Date().toLocaleTimeString() 
+    });
+    
     saveData();
     updateTable();
     document.getElementById("result").innerText = `Terscan: ${name}`;
 }
 
-function ubahQty(barcode, delta) {
-    const item = scanData.find(i => i.barcode === barcode);
-    if (item) {
-        item.qty = Math.max(0, item.qty + delta);
-        saveData();
-        updateTable();
-    }
-}
-
 function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
-    scanData.forEach(item => {
+    // Scan terbaru muncul di atas
+    [...scanData].reverse().forEach(item => {
         tbody.innerHTML += `<tr>
-            <td>${item.nama}<br><small>Kode: ${item.barcode}</small></td>
-            <td>
-                <button onclick="ubahQty('${item.barcode}', -1)">-</button>
-                ${item.qty}
-                <button onclick="ubahQty('${item.barcode}', 1)">+</button>
-            </td>
+            <td>${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
+            <td>${item.qty}</td>
         </tr>`;
     });
 }
