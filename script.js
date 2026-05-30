@@ -36,12 +36,7 @@ async function toggleKamera() {
     isCameraOn = !isCameraOn;
 }
 
-let lastScan = "";
 function onScanSuccess(decodedText) {
-    if (decodedText === lastScan) return;
-    lastScan = decodedText;
-    setTimeout(() => { lastScan = ""; }, 2000);
-
     const name = inventory[decodedText] || "Barang Tidak Ditemukan";
     tambahBarang(decodedText, name);
 }
@@ -60,8 +55,12 @@ function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
     let counter = 1;
+    // Tampilkan scan terbaru di atas
     [...scanData].reverse().forEach((item, index) => {
-        const isDuplicate = index > 0 && item.barcode === scanData[scanData.length - index];
+        // Tampilkan nomor hanya jika barcode berbeda dengan baris sebelumnya (karena reverse, cek item setelahnya)
+        const nextItem = [...scanData].reverse()[index + 1];
+        const isDuplicate = nextItem && item.barcode === nextItem.barcode;
+        
         tbody.innerHTML += `<tr>
             <td>${isDuplicate ? "" : "<b>" + (counter++) + ".</b>"} ${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
             <td>${item.qty}</td>
@@ -74,7 +73,6 @@ function cariBarang(query) {
     resultsDiv.innerHTML = "";
     if (query.length < 3) return;
 
-    // Matikan kamera saat input manual
     if(isCameraOn) toggleKamera();
 
     const filtered = Object.entries(inventory).filter(([code, name]) => 
@@ -116,8 +114,9 @@ function exportCSV() {
 }
 
 function resetData() {
-    if(confirm("Hapus semua hasil?")) {
+    if(confirm("Hapus semua hasil scan dan reset nama petugas?")) {
         localStorage.removeItem('stokOpnameData');
+        localStorage.removeItem('namaPetugas');
         location.reload();
     }
 }
