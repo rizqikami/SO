@@ -1,8 +1,11 @@
 let inventory = {};
 let scanData = JSON.parse(localStorage.getItem('stokOpnameData')) || [];
 let petugas = localStorage.getItem('namaPetugas');
+let isCameraOn = false;
+let isFlashOn = false;
+const html5QrCode = new Html5Qrcode("reader");
 
-// Inisialisasi Nama Petugas
+// Inisialisasi
 if (!petugas) {
     petugas = prompt("Masukkan nama petugas stok opname:") || "Anonim";
     localStorage.setItem('namaPetugas', petugas);
@@ -23,42 +26,64 @@ Papa.parse("item.csv", {
     }
 });
 
+function toggleKamera() {
+    const readerDiv = document.getElementById("reader");
+    if (!isCameraOn) {
+        readerDiv.style.display = "block";
+        html5QrCode.start({ facingMode: "environment" }, { fps: 2, qrbox: 250 }, onScanSuccess);
+        document.getElementById("toggle-camera-btn").innerText = "Matikan Kamera";
+    } else {
+        html5QrCode.stop();
+        readerDiv.style.display = "none";
+        document.getElementById("toggle-camera-btn").innerText = "Aktifkan Kamera";
+    }
+    isCameraOn = !isCameraOn;
+}
+
+let lastScan = "";
+function onScanSuccess(decodedText) {
+    if (decodedText === lastScan) return;
+    lastScan = decodedText;
+    setTimeout(() => { lastScan = ""; }, 2000);
+
+    const existingItem = scanData.find(item => item.barcode === decodedText);
+    const name = inventory[decodedText] || "Barang Tidak Ditemukan";
+
+    if (existingItem) {
+        existingItem.qty += 1;
+    } else {
+        scanData.push({ barcode: decodedText, nama: name, qty: 1, petugas: petugas, timestamp: new Date().toLocaleString() });
+    }
+    saveData();
+    updateTable();
+    document.getElementById("result").innerText = `Terscan: ${name}`;
+}
+
+function ubahQty(barcode, delta) {
+    const item = scanData.find(i => i.barcode === barcode);
+    if (item) {
+        item.qty = Math.max(0, item.qty + delta);
+        saveData();
+        updateTable();
+    }
+}
+
 function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
     scanData.forEach(item => {
-        tbody.innerHTML += `<tr><td>${item.nama}</td><td>${item.qty}</td></tr>`;
+        tbody.innerHTML += `<tr>
+            <td>${item.nama}<br><small>Kode: ${item.barcode}</small></td>
+            <td>
+                <button onclick="ubahQty('${item.barcode}', -1)">-</button>
+                ${item.qty}
+                <button onclick="ubahQty('${item.barcode}', 1)">+</button>
+            </td>
+        </tr>`;
     });
 }
 
-const html5QrCode = new Html5Qrcode("reader");
-let isFlashOn = false;
-
-html5QrCode.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: 250 },
-    (decodedText) => {
-        const existingItem = scanData.find(item => item.barcode === decodedText);
-        const name = inventory[decodedText] || "Barang Tidak Ditemukan";
-
-        if (existingItem) {
-            existingItem.qty += 1;
-            existingItem.timestamp = new Date().toLocaleString();
-        } else {
-            scanData.push({ 
-                barcode: decodedText, 
-                nama: name, 
-                qty: 1, 
-                petugas: petugas, 
-                timestamp: new Date().toLocaleString() 
-            });
-        }
-        
-        localStorage.setItem('stokOpnameData', JSON.stringify(scanData));
-        document.getElementById("result").innerText = `Terscan: ${name}`;
-        updateTable();
-    }
-);
+function saveData() { localStorage.setItem('stokOpnameData', JSON.stringify(scanData)); }
 
 document.getElementById("flash-btn").addEventListener("click", () => {
     isFlashOn = !isFlashOn;
@@ -76,7 +101,7 @@ function exportCSV() {
 }
 
 function resetData() {
-    if(confirm("Hapus semua hasil scan?")) {
+    if(confirm("Hapus semua data?")) {
         localStorage.removeItem('stokOpnameData');
         localStorage.removeItem('namaPetugas');
         location.reload();
