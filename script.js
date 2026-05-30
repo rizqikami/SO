@@ -5,7 +5,7 @@ let isCameraOn = false;
 let isFlashOn = false;
 const html5QrCode = new Html5Qrcode("reader");
 
-// Inisialisasi
+// Inisialisasi Nama Petugas
 if (!petugas) {
     petugas = prompt("Masukkan nama petugas stok opname:") || "Anonim";
     localStorage.setItem('namaPetugas', petugas);
@@ -20,20 +20,21 @@ Papa.parse("item.csv", {
     complete: function(results) {
         results.data.forEach(item => {
             const keys = Object.keys(item);
+            // Index 0: Barcode, Index 1: Nama
             inventory[item[keys[0]]] = item[keys[1]];
         });
         updateTable();
     }
 });
 
-function toggleKamera() {
+async function toggleKamera() {
     const readerDiv = document.getElementById("reader");
     if (!isCameraOn) {
         readerDiv.style.display = "block";
-        html5QrCode.start({ facingMode: "environment" }, { fps: 2, qrbox: 250 }, onScanSuccess);
+        await html5QrCode.start({ facingMode: "environment" }, { fps: 2, qrbox: 250 }, onScanSuccess);
         document.getElementById("toggle-camera-btn").innerText = "Matikan Kamera";
     } else {
-        html5QrCode.stop();
+        await html5QrCode.stop();
         readerDiv.style.display = "none";
         document.getElementById("toggle-camera-btn").innerText = "Aktifkan Kamera";
     }
@@ -44,7 +45,7 @@ let lastScan = "";
 function onScanSuccess(decodedText) {
     if (decodedText === lastScan) return;
     lastScan = decodedText;
-    setTimeout(() => { lastScan = ""; }, 2000);
+    setTimeout(() => { lastScan = ""; }, 2000); // Jeda 2 detik
 
     const existingItem = scanData.find(item => item.barcode === decodedText);
     const name = inventory[decodedText] || "Barang Tidak Ditemukan";
@@ -91,8 +92,16 @@ document.getElementById("flash-btn").addEventListener("click", () => {
 });
 
 function exportCSV() {
-    const csv = Papa.unparse(scanData);
-    const blob = new Blob([`Petugas: ${petugas}\n` + csv], { type: 'text/csv' });
+    const formattedData = scanData.map(item => ({
+        "Kode Barang": "'" + item.barcode, 
+        "Nama Barang": item.nama,
+        "Kuantitas": item.qty,
+        "Petugas": item.petugas,
+        "Waktu Scan": item.timestamp
+    }));
+
+    const csv = Papa.unparse(formattedData);
+    const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -101,7 +110,7 @@ function exportCSV() {
 }
 
 function resetData() {
-    if(confirm("Hapus semua data?")) {
+    if(confirm("Hapus semua hasil scan?")) {
         localStorage.removeItem('stokOpnameData');
         localStorage.removeItem('namaPetugas');
         location.reload();
