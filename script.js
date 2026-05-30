@@ -51,68 +51,62 @@ function onScanSuccess(decodedText) {
 function tambahBarang(barcode, name) {
     scanData.push({ 
         barcode: barcode, nama: name, qty: 1, 
-        petugas: petugas, timestamp: new Date().toLocaleTimeString() 
+        petugas: petugas, timestamp: new Date().toLocaleTimeString(),
+        isLocked: false 
     });
     saveData();
     updateTable();
     document.getElementById("result").innerText = `Terscan: ${name}`;
 }
 
-// 4. Update Tabel dengan Penomoran Kronologis
+// 4. Update Tabel dengan Fitur Gembok
 function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
     
-    // Filter barang yang qty > 0
-    const activeData = scanData.filter(item => item.qty > 0);
-    
-    // Tentukan urutan barcode berdasarkan pertama kali muncul (kronologis)
-    const uniqueBarcodes = [];
-    scanData.forEach(item => {
-        if (!uniqueBarcodes.includes(item.barcode)) {
-            uniqueBarcodes.push(item.barcode);
-        }
-    });
+    // Urutan: Barang yang belum dikunci di atas, dikunci di bawah
+    const sortedData = [...scanData].sort((a, b) => a.isLocked - b.isLocked);
+    const uniqueBarcodes = [...new Set(scanData.map(item => item.barcode))];
 
-    // Tampilkan data (reverse agar terbaru di atas)
-    [...activeData].reverse().forEach((item) => {
-        // Cari nomor berdasarkan urutan kedatangan pertama kali
+    sortedData.reverse().forEach((item) => {
         const nomorUrut = uniqueBarcodes.indexOf(item.barcode) + 1;
+        const isFirst = scanData.findIndex(d => d.barcode === item.barcode) === scanData.indexOf(item);
         
-        // Cek apakah ini kemunculan pertama barcode tersebut dalam list aktif
-        const isFirst = activeData.findIndex(d => d.barcode === item.barcode) === activeData.indexOf(item);
+        const style = item.isLocked ? 'style="background: #e8f5e9;"' : '';
+        const lockIcon = item.isLocked ? "🔒" : "🔓";
         
-        tbody.innerHTML += `<tr>
+        tbody.innerHTML += `<tr ${style}>
             <td>${isFirst ? "<b>" + nomorUrut + ".</b>" : ""} ${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
             <td>
-                <button onclick="ubahQty('${item.barcode}', -1)">-</button>
-                <span onclick="editManual('${item.barcode}')" style="cursor:pointer; font-weight:bold; text-decoration:underline;">${item.qty}</span>
-                <button onclick="ubahQty('${item.barcode}', 1)">+</button>
+                <button onclick="ubahQty('${item.barcode}', -1)" ${item.isLocked ? 'disabled' : ''}>-</button>
+                <span onclick="!${item.isLocked} && editManual('${item.barcode}')" style="cursor:pointer; font-weight:bold; text-decoration:${item.isLocked ? 'none' : 'underline'};">${item.qty}</span>
+                <button onclick="ubahQty('${item.barcode}', 1)" ${item.isLocked ? 'disabled' : ''}>+</button>
+                <button onclick="toggleLock('${item.barcode}')" style="margin-left:5px;">${lockIcon}</button>
             </td>
         </tr>`;
     });
 }
 
-// 5. Fungsi Edit Kuantitas
-function ubahQty(barcode, delta) {
-    let index = -1;
-    // Cari entri terbaru dengan barcode tersebut
-    for (let i = scanData.length - 1; i >= 0; i--) {
-        if (scanData[i].barcode === barcode && scanData[i].qty > 0) {
-            index = i;
-            break;
-        }
+function toggleLock(barcode) {
+    const item = scanData.find(i => i.barcode === barcode);
+    if (item) {
+        item.isLocked = !item.isLocked;
+        saveData();
+        updateTable();
     }
+}
 
-    if (index !== -1) {
-        scanData[index].qty = Math.max(0, scanData[index].qty + delta);
+function ubahQty(barcode, delta) {
+    const item = scanData.find(i => i.barcode === barcode && !i.isLocked);
+    if (item) {
+        item.qty = Math.max(0, item.qty + delta);
         saveData();
         updateTable();
     }
 }
 
 function editManual(barcode) {
-    const item = scanData.find(i => i.barcode === barcode && i.qty > 0);
+    const item = scanData.find(i => i.barcode === barcode && !i.isLocked);
     if (item) {
         const newQty = prompt("Masukkan jumlah kuantitas:", item.qty);
         if (newQty !== null && !isNaN(newQty)) {
@@ -123,7 +117,7 @@ function editManual(barcode) {
     }
 }
 
-// 6. Pencarian Manual (Drop-Up)
+// 5. Pencarian Manual (Drop-Up)
 function cariBarang(query) {
     const resultsDiv = document.getElementById("search-results");
     resultsDiv.innerHTML = "";
