@@ -4,6 +4,7 @@ let isCameraOn = false;
 let isFlashOn = false;
 const html5QrCode = new Html5Qrcode("reader");
 
+// 1. Inisialisasi Petugas
 function cekPetugas() {
     let nama = localStorage.getItem('namaPetugas');
     if (!nama) {
@@ -15,6 +16,7 @@ function cekPetugas() {
 }
 let petugas = cekPetugas();
 
+// 2. Load Database
 Papa.parse("item.csv", {
     download: true, header: true, skipEmptyLines: true,
     complete: function(results) {
@@ -26,6 +28,7 @@ Papa.parse("item.csv", {
     }
 });
 
+// 3. Fungsi Kamera
 async function toggleKamera() {
     const readerDiv = document.getElementById("reader");
     if (!isCameraOn) {
@@ -55,15 +58,22 @@ function tambahBarang(barcode, name) {
     document.getElementById("result").innerText = `Terscan: ${name}`;
 }
 
+// 4. Update Tabel dengan Filter dan Penomoran Cerdas
 function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
+    
+    // Filter hanya barang dengan qty > 0
+    const activeData = scanData.filter(item => item.qty > 0);
     let counter = 1;
-    [...scanData].reverse().forEach((item, index) => {
-        const nextItem = [...scanData].reverse()[index + 1];
-        const isDuplicate = nextItem && item.barcode === nextItem.barcode;
+
+    // Tampilkan urutan terbalik
+    [...activeData].reverse().forEach((item, index) => {
+        // Cek apakah ini kemunculan pertama barcode tersebut di list yang aktif
+        const isFirst = activeData.findIndex(d => d.barcode === item.barcode) === activeData.indexOf(item);
+        
         tbody.innerHTML += `<tr>
-            <td>${isDuplicate ? "" : "<b>" + (counter++) + ".</b>"} ${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
+            <td>${isFirst ? "<b>" + (counter++) + ".</b>" : ""} ${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
             <td>
                 <button onclick="ubahQty('${item.barcode}', -1)">-</button>
                 <span onclick="editManual('${item.barcode}')" style="cursor:pointer; font-weight:bold; text-decoration:underline;">${item.qty}</span>
@@ -74,7 +84,7 @@ function updateTable() {
 }
 
 function ubahQty(barcode, delta) {
-    const item = scanData.find(i => i.barcode === barcode);
+    const item = scanData.find(i => i.barcode === barcode && i.qty > 0);
     if (item) {
         item.qty = Math.max(0, item.qty + delta);
         saveData();
@@ -94,6 +104,7 @@ function editManual(barcode) {
     }
 }
 
+// 5. Pencarian Manual (Drop-Up)
 function cariBarang(query) {
     const resultsDiv = document.getElementById("search-results");
     resultsDiv.innerHTML = "";
@@ -123,7 +134,7 @@ document.getElementById("flash-btn").addEventListener("click", () => {
 });
 
 function exportCSV() {
-    const formattedData = scanData.map(item => ({
+    const formattedData = scanData.filter(i => i.qty > 0).map(item => ({
         "Kode Barang": "'" + item.barcode, 
         "Nama Barang": item.nama,
         "Kuantitas": item.qty,
@@ -139,8 +150,3 @@ function exportCSV() {
 
 function resetData() {
     if(confirm("Hapus semua hasil scan dan reset nama petugas?")) {
-        localStorage.removeItem('stokOpnameData');
-        localStorage.removeItem('namaPetugas');
-        setTimeout(() => { location.reload(); }, 100);
-    }
-}
