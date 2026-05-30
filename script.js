@@ -58,23 +58,32 @@ function tambahBarang(barcode, name) {
     document.getElementById("result").innerText = `Terscan: ${name}`;
 }
 
-// 4. Update Tabel
+// 4. Update Tabel dengan Penomoran Kronologis
 function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
     
-    // Filter hanya barang yang qty > 0
+    // Filter barang yang qty > 0
     const activeData = scanData.filter(item => item.qty > 0);
-    let counter = 1;
+    
+    // Tentukan urutan barcode berdasarkan pertama kali muncul (kronologis)
+    const uniqueBarcodes = [];
+    scanData.forEach(item => {
+        if (!uniqueBarcodes.includes(item.barcode)) {
+            uniqueBarcodes.push(item.barcode);
+        }
+    });
 
-    // Menampilkan daftar dengan urutan scan terbaru di atas
-    [...activeData].reverse().forEach((item, index) => {
-        // Logika penomoran: Cek apakah barcode ini unik dalam daftar aktif
-        const previousItems = [...activeData].reverse().slice(0, index);
-        const isFirst = !previousItems.find(d => d.barcode === item.barcode);
+    // Tampilkan data (reverse agar terbaru di atas)
+    [...activeData].reverse().forEach((item) => {
+        // Cari nomor berdasarkan urutan kedatangan pertama kali
+        const nomorUrut = uniqueBarcodes.indexOf(item.barcode) + 1;
+        
+        // Cek apakah ini kemunculan pertama barcode tersebut dalam list aktif
+        const isFirst = activeData.findIndex(d => d.barcode === item.barcode) === activeData.indexOf(item);
         
         tbody.innerHTML += `<tr>
-            <td>${isFirst ? "<b>" + (counter++) + ".</b>" : ""} ${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
+            <td>${isFirst ? "<b>" + nomorUrut + ".</b>" : ""} ${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
             <td>
                 <button onclick="ubahQty('${item.barcode}', -1)">-</button>
                 <span onclick="editManual('${item.barcode}')" style="cursor:pointer; font-weight:bold; text-decoration:underline;">${item.qty}</span>
@@ -84,10 +93,10 @@ function updateTable() {
     });
 }
 
-// 5. Perbaikan Logika Pengurangan (Mencari dari yang terbaru/paling atas)
+// 5. Fungsi Edit Kuantitas
 function ubahQty(barcode, delta) {
-    // Cari index entri yang barcode-nya sama dengan yang sedang di layar (dari paling belakang/terbaru)
     let index = -1;
+    // Cari entri terbaru dengan barcode tersebut
     for (let i = scanData.length - 1; i >= 0; i--) {
         if (scanData[i].barcode === barcode && scanData[i].qty > 0) {
             index = i;
@@ -114,6 +123,7 @@ function editManual(barcode) {
     }
 }
 
+// 6. Pencarian Manual (Drop-Up)
 function cariBarang(query) {
     const resultsDiv = document.getElementById("search-results");
     resultsDiv.innerHTML = "";
@@ -143,7 +153,6 @@ document.getElementById("flash-btn").addEventListener("click", () => {
 });
 
 function exportCSV() {
-    // Export semua data (termasuk qty yang pernah diinput sebelum dikurangi jadi 0)
     const formattedData = scanData.map(item => ({
         "Kode Barang": "'" + item.barcode, 
         "Nama Barang": item.nama,
