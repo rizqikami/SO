@@ -48,14 +48,13 @@ function onScanSuccess(decodedText) {
     tambahBarang(decodedText, name);
 }
 
-// FUNGSI AUTO-LOCK & TAMBAH BARANG
+// 4. Fungsi Auto-Lock & Tambah Barang
 function tambahBarang(barcode, name) {
-    // Kunci semua barang yang ada di daftar saat ini
     scanData.forEach(item => item.isLocked = true);
 
     const existing = scanData.find(i => i.barcode === barcode);
     if (existing) {
-        existing.isLocked = false; // Buka kunci barang yang baru di-scan
+        existing.isLocked = false;
         existing.qty += 1;
     } else {
         scanData.push({ 
@@ -69,30 +68,17 @@ function tambahBarang(barcode, name) {
     document.getElementById("result").innerText = `Terscan: ${name}`;
 }
 
-// 4. Update Tabel dengan Penomoran Dinamis
+// 5. Update Tabel dengan Penomoran Dinamis
 function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
     
-    // Filter barang yang qty > 0 saja
     const activeData = scanData.filter(item => item.qty > 0);
-    
-    // Tentukan daftar barcode unik hanya dari barang yang AKTIF
-    const uniqueBarcodes = [];
-    activeData.forEach(item => {
-        if (!uniqueBarcodes.includes(item.barcode)) {
-            uniqueBarcodes.push(item.barcode);
-        }
-    });
-
-    // Urutan: Barang yang belum dikunci di atas, dikunci di bawah
+    const uniqueBarcodes = [...new Set(activeData.map(item => item.barcode))];
     const sortedData = [...activeData].sort((a, b) => a.isLocked - b.isLocked);
 
     sortedData.reverse().forEach((item) => {
-        // Penomoran berdasarkan posisi di uniqueBarcodes aktif
         const nomorUrut = uniqueBarcodes.indexOf(item.barcode) + 1;
-        
-        // Cek entri pertama barcode untuk penomoran
         const isFirst = activeData.findIndex(d => d.barcode === item.barcode) === activeData.indexOf(item);
         
         const style = item.isLocked ? 'style="background: #e8f5e9;"' : '';
@@ -168,19 +154,25 @@ document.getElementById("flash-btn").addEventListener("click", () => {
     html5QrCode.applyVideoConstraints({ advanced: [{ torch: isFlashOn }] });
 });
 
+// 6. Export CSV dengan Kolom Tanggal & Waktu
 function exportCSV() {
+    const sekarang = new Date();
+    const tanggal = sekarang.toLocaleDateString(); 
+    
     const formattedData = scanData.map(item => ({
         "Kode Barang": "'" + item.barcode, 
         "Nama Barang": item.nama,
         "Kuantitas": item.qty,
-        "Petugas": item.petugas,
-        "Waktu Scan": item.timestamp
+        "Tanggal": tanggal,
+        "Waktu": item.timestamp,
+        "Petugas": item.petugas
     }));
+    
     const csv = Papa.unparse(formattedData);
     const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `StokOpname_${petugas}.csv`; a.click();
+    a.href = url; a.download = `StokOpname_${petugas}_${tanggal.replace(/\//g, '-')}.csv`; a.click();
 }
 
 function resetData() {
