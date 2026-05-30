@@ -58,19 +58,20 @@ function tambahBarang(barcode, name) {
     document.getElementById("result").innerText = `Terscan: ${name}`;
 }
 
-// 4. Update Tabel dengan Filter dan Penomoran Cerdas
+// 4. Update Tabel dengan Filter (Barang qty 0 otomatis hilang)
 function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
     
-    // Filter hanya barang dengan qty > 0
+    // Filter: Hanya ambil yang qty > 0 agar barang 0 hilang otomatis dari layar
     const activeData = scanData.filter(item => item.qty > 0);
     let counter = 1;
 
     // Tampilkan urutan terbalik
     [...activeData].reverse().forEach((item, index) => {
-        // Cek apakah ini kemunculan pertama barcode tersebut di list yang aktif
-        const isFirst = activeData.findIndex(d => d.barcode === item.barcode) === activeData.indexOf(item);
+        // Logika penomoran: Cek apakah ini pertama kali barcode ini muncul di list aktif
+        const previousItems = [...activeData].reverse().slice(0, index);
+        const isFirst = !previousItems.find(d => d.barcode === item.barcode);
         
         tbody.innerHTML += `<tr>
             <td>${isFirst ? "<b>" + (counter++) + ".</b>" : ""} ${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
@@ -84,11 +85,11 @@ function updateTable() {
 }
 
 function ubahQty(barcode, delta) {
-    const item = scanData.find(i => i.barcode === barcode && i.qty > 0);
+    const item = scanData.find(i => i.barcode === barcode);
     if (item) {
         item.qty = Math.max(0, item.qty + delta);
         saveData();
-        updateTable();
+        updateTable(); // Otomatis refresh tabel & filter barang 0
     }
 }
 
@@ -134,7 +135,8 @@ document.getElementById("flash-btn").addEventListener("click", () => {
 });
 
 function exportCSV() {
-    const formattedData = scanData.filter(i => i.qty > 0).map(item => ({
+    // Export tetap mencatat semua data agar data opname lengkap
+    const formattedData = scanData.map(item => ({
         "Kode Barang": "'" + item.barcode, 
         "Nama Barang": item.nama,
         "Kuantitas": item.qty,
@@ -150,3 +152,8 @@ function exportCSV() {
 
 function resetData() {
     if(confirm("Hapus semua hasil scan dan reset nama petugas?")) {
+        localStorage.removeItem('stokOpnameData');
+        localStorage.removeItem('namaPetugas');
+        setTimeout(() => { location.reload(); }, 100);
+    }
+}
