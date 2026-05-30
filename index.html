@@ -7,7 +7,7 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 10px; background-color: #E0F7FA; }
+        body { font-family: sans-serif; text-align: center; padding: 10px; background-color: #E0F7FA; padding-bottom: 150px; }
         #reader { width: 100%; max-width: 500px; margin: auto; display: none; }
         #petugas-info { font-weight: bold; margin: 10px; color: #006064; }
         table { 
@@ -18,9 +18,14 @@
         thead { position: sticky; top: 0; background: #B3E5FC; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         .controls { margin-top: 10px; }
-        #manual-input-area { width: 100%; max-width: 500px; margin: 20px auto; padding: 10px; background: #B3E5FC; border-radius: 8px; }
-        #search-results button { display: block; width: 100%; padding: 10px; margin-top: 5px; cursor: pointer; }
         button { padding: 8px 12px; margin: 3px; cursor: pointer; }
+        
+        #manual-input-area { 
+            position: fixed; bottom: 0; left: 0; width: 100%; 
+            background: #B3E5FC; padding: 10px; box-sizing: border-box; z-index: 1000;
+        }
+        #search-results { background: white; border: 1px solid #ddd; margin-bottom: 5px; border-radius: 5px; max-height: 150px; overflow-y: auto; }
+        #search-results button { display: block; width: 100%; padding: 10px; border: none; border-bottom: 1px solid #eee; background: white; text-align: left; }
     </style>
 </head>
 <body>
@@ -43,8 +48,8 @@
     </table>
 
     <div id="manual-input-area">
-        <input type="text" id="manual-search" placeholder="Cari nama barang manual..." onkeyup="cariBarang(this.value)" style="width: 90%; padding: 8px;">
         <div id="search-results"></div>
+        <input type="text" id="manual-search" placeholder="Cari nama barang manual..." onkeyup="cariBarang(this.value)" style="width: 90%; padding: 8px;">
     </div>
 
     <script src="script.js"></script>
