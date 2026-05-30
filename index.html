@@ -3,26 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stok Opname Scanner</title>
+    <title>Stok Opname AFJ</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 10px; background-color: #f4f4f9; }
+        body { font-family: sans-serif; text-align: center; padding: 10px; background-color: #E0F7FA; }
         #reader { width: 100%; max-width: 500px; margin: auto; display: none; }
-        #petugas-info { font-weight: bold; margin: 10px; }
+        #petugas-info { font-weight: bold; margin: 10px; color: #006064; }
         table { 
             width: 100%; max-width: 500px; margin: 20px auto; 
             border-collapse: collapse; background: white; 
-            display: block; max-height: 350px; overflow-y: auto; 
+            display: block; max-height: 300px; overflow-y: auto; 
         }
-        thead { position: sticky; top: 0; background: #eee; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        thead { position: sticky; top: 0; background: #B3E5FC; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         .controls { margin-top: 10px; }
-        button { padding: 10px; margin: 5px; cursor: pointer; }
+        #manual-input-area { width: 100%; max-width: 500px; margin: 20px auto; padding: 10px; background: #B3E5FC; border-radius: 8px; }
+        #search-results button { display: block; width: 100%; padding: 10px; margin-top: 5px; cursor: pointer; }
+        button { padding: 8px 12px; margin: 3px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h3>Program Stok Opname</h3>
+    <h3>Program Stok Opnam AFJ</h3>
     <div id="petugas-info">Petugas: -</div>
     
     <div class="controls">
@@ -33,12 +35,17 @@
     </div>
 
     <div id="reader"></div>
-    <div id="result" style="margin: 15px; font-weight: bold; color: #2980b9;">Arahkan kamera ke barcode...</div>
+    <div id="result" style="margin: 15px; font-weight: bold; color: #006064;">Arahkan kamera...</div>
 
     <table>
         <thead><tr><th>Nama Barang | Kode | Waktu</th><th>Qty</th></tr></thead>
         <tbody id="table-body"></tbody>
     </table>
+
+    <div id="manual-input-area">
+        <input type="text" id="manual-search" placeholder="Cari nama barang manual..." onkeyup="cariBarang(this.value)" style="width: 90%; padding: 8px;">
+        <div id="search-results"></div>
+    </div>
 
     <script src="script.js"></script>
 </body>
