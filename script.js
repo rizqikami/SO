@@ -5,18 +5,14 @@ let isCameraOn = false;
 let isFlashOn = false;
 const html5QrCode = new Html5Qrcode("reader");
 
-// Inisialisasi
 if (!petugas) {
-    petugas = prompt("Masukkan nama petugas stok opname:") || "Anonim";
+    petugas = prompt("Masukkan nama petugas:") || "Anonim";
     localStorage.setItem('namaPetugas', petugas);
 }
 document.getElementById("petugas-info").innerText = "Petugas: " + petugas;
 
-// Load database item.csv
 Papa.parse("item.csv", {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
+    download: true, header: true, skipEmptyLines: true,
     complete: function(results) {
         results.data.forEach(item => {
             const keys = Object.keys(item);
@@ -47,16 +43,14 @@ function onScanSuccess(decodedText) {
     setTimeout(() => { lastScan = ""; }, 2000);
 
     const name = inventory[decodedText] || "Barang Tidak Ditemukan";
-    
-    // Simpan setiap scan sebagai baris baru
+    tambahBarang(decodedText, name);
+}
+
+function tambahBarang(barcode, name) {
     scanData.push({ 
-        barcode: decodedText, 
-        nama: name, 
-        qty: 1, 
-        petugas: petugas, 
-        timestamp: new Date().toLocaleTimeString() 
+        barcode: barcode, nama: name, qty: 1, 
+        petugas: petugas, timestamp: new Date().toLocaleTimeString() 
     });
-    
     saveData();
     updateTable();
     document.getElementById("result").innerText = `Terscan: ${name}`;
@@ -65,12 +59,37 @@ function onScanSuccess(decodedText) {
 function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
-    // Scan terbaru muncul di atas
-    [...scanData].reverse().forEach(item => {
+    let counter = 1;
+    [...scanData].reverse().forEach((item, index) => {
+        const isDuplicate = index > 0 && item.barcode === scanData[scanData.length - index];
         tbody.innerHTML += `<tr>
-            <td>${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
+            <td>${isDuplicate ? "" : "<b>" + (counter++) + ".</b>"} ${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
             <td>${item.qty}</td>
         </tr>`;
+    });
+}
+
+function cariBarang(query) {
+    const resultsDiv = document.getElementById("search-results");
+    resultsDiv.innerHTML = "";
+    if (query.length < 3) return;
+
+    // Matikan kamera saat input manual
+    if(isCameraOn) toggleKamera();
+
+    const filtered = Object.entries(inventory).filter(([code, name]) => 
+        name.toLowerCase().includes(query.toLowerCase())
+    );
+
+    filtered.forEach(([code, name]) => {
+        const btn = document.createElement("button");
+        btn.innerText = name;
+        btn.onclick = () => {
+            tambahBarang(code, name);
+            resultsDiv.innerHTML = "";
+            document.getElementById("manual-search").value = "";
+        };
+        resultsDiv.appendChild(btn);
     });
 }
 
@@ -89,20 +108,16 @@ function exportCSV() {
         "Petugas": item.petugas,
         "Waktu Scan": item.timestamp
     }));
-
     const csv = Papa.unparse(formattedData);
     const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `StokOpname_${petugas}_${new Date().toLocaleDateString()}.csv`;
-    a.click();
+    a.href = url; a.download = `StokOpname_${petugas}.csv`; a.click();
 }
 
 function resetData() {
-    if(confirm("Hapus semua hasil scan?")) {
+    if(confirm("Hapus semua hasil?")) {
         localStorage.removeItem('stokOpnameData');
-        localStorage.removeItem('namaPetugas');
         location.reload();
     }
 }
