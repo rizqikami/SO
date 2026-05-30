@@ -10,7 +10,12 @@
         body { font-family: sans-serif; text-align: center; padding: 10px; background-color: #f4f4f9; }
         #reader { width: 100%; max-width: 500px; margin: auto; display: none; }
         #petugas-info { font-weight: bold; margin: 10px; }
-        table { width: 100%; max-width: 500px; margin: 20px auto; border-collapse: collapse; background: white; }
+        table { 
+            width: 100%; max-width: 500px; margin: 20px auto; 
+            border-collapse: collapse; background: white; 
+            display: block; max-height: 350px; overflow-y: auto; 
+        }
+        thead { position: sticky; top: 0; background: #eee; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         .controls { margin-top: 10px; }
         button { padding: 10px; margin: 5px; cursor: pointer; }
@@ -31,7 +36,7 @@
     <div id="result" style="margin: 15px; font-weight: bold; color: #2980b9;">Arahkan kamera ke barcode...</div>
 
     <table>
-        <thead><tr><th>Nama Barang & Kode</th><th>Qty</th></tr></thead>
+        <thead><tr><th>Nama Barang | Kode | Waktu</th><th>Qty</th></tr></thead>
         <tbody id="table-body"></tbody>
     </table>
 
