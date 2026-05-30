@@ -58,18 +58,18 @@ function tambahBarang(barcode, name) {
     document.getElementById("result").innerText = `Terscan: ${name}`;
 }
 
-// 4. Update Tabel dengan Filter (Barang qty 0 otomatis hilang)
+// 4. Update Tabel
 function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
     
-    // Filter: Hanya ambil yang qty > 0 agar barang 0 hilang otomatis dari layar
+    // Filter hanya barang yang qty > 0
     const activeData = scanData.filter(item => item.qty > 0);
     let counter = 1;
 
-    // Tampilkan urutan terbalik
+    // Menampilkan daftar dengan urutan scan terbaru di atas
     [...activeData].reverse().forEach((item, index) => {
-        // Logika penomoran: Cek apakah ini pertama kali barcode ini muncul di list aktif
+        // Logika penomoran: Cek apakah barcode ini unik dalam daftar aktif
         const previousItems = [...activeData].reverse().slice(0, index);
         const isFirst = !previousItems.find(d => d.barcode === item.barcode);
         
@@ -84,17 +84,26 @@ function updateTable() {
     });
 }
 
+// 5. Perbaikan Logika Pengurangan (Mencari dari yang terbaru/paling atas)
 function ubahQty(barcode, delta) {
-    const item = scanData.find(i => i.barcode === barcode);
-    if (item) {
-        item.qty = Math.max(0, item.qty + delta);
+    // Cari index entri yang barcode-nya sama dengan yang sedang di layar (dari paling belakang/terbaru)
+    let index = -1;
+    for (let i = scanData.length - 1; i >= 0; i--) {
+        if (scanData[i].barcode === barcode && scanData[i].qty > 0) {
+            index = i;
+            break;
+        }
+    }
+
+    if (index !== -1) {
+        scanData[index].qty = Math.max(0, scanData[index].qty + delta);
         saveData();
-        updateTable(); // Otomatis refresh tabel & filter barang 0
+        updateTable();
     }
 }
 
 function editManual(barcode) {
-    const item = scanData.find(i => i.barcode === barcode);
+    const item = scanData.find(i => i.barcode === barcode && i.qty > 0);
     if (item) {
         const newQty = prompt("Masukkan jumlah kuantitas:", item.qty);
         if (newQty !== null && !isNaN(newQty)) {
@@ -105,7 +114,6 @@ function editManual(barcode) {
     }
 }
 
-// 5. Pencarian Manual (Drop-Up)
 function cariBarang(query) {
     const resultsDiv = document.getElementById("search-results");
     resultsDiv.innerHTML = "";
@@ -135,7 +143,7 @@ document.getElementById("flash-btn").addEventListener("click", () => {
 });
 
 function exportCSV() {
-    // Export tetap mencatat semua data agar data opname lengkap
+    // Export semua data (termasuk qty yang pernah diinput sebelum dikurangi jadi 0)
     const formattedData = scanData.map(item => ({
         "Kode Barang": "'" + item.barcode, 
         "Nama Barang": item.nama,
