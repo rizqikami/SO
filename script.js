@@ -48,9 +48,9 @@ function onScanSuccess(decodedText) {
     tambahBarang(decodedText, name);
 }
 
-// FUNGSI AUTO-LOCK BARU
+// FUNGSI AUTO-LOCK & TAMBAH BARANG
 function tambahBarang(barcode, name) {
-    // Kunci semua barang lama
+    // Kunci semua barang yang ada di daftar saat ini
     scanData.forEach(item => item.isLocked = true);
 
     const existing = scanData.find(i => i.barcode === barcode);
@@ -69,17 +69,30 @@ function tambahBarang(barcode, name) {
     document.getElementById("result").innerText = `Terscan: ${name}`;
 }
 
-// 4. Update Tabel
+// 4. Update Tabel dengan Penomoran Dinamis
 function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
     
+    // Filter barang yang qty > 0 saja
     const activeData = scanData.filter(item => item.qty > 0);
+    
+    // Tentukan daftar barcode unik hanya dari barang yang AKTIF
+    const uniqueBarcodes = [];
+    activeData.forEach(item => {
+        if (!uniqueBarcodes.includes(item.barcode)) {
+            uniqueBarcodes.push(item.barcode);
+        }
+    });
+
+    // Urutan: Barang yang belum dikunci di atas, dikunci di bawah
     const sortedData = [...activeData].sort((a, b) => a.isLocked - b.isLocked);
-    const uniqueBarcodes = [...new Set(scanData.map(item => item.barcode))];
 
     sortedData.reverse().forEach((item) => {
+        // Penomoran berdasarkan posisi di uniqueBarcodes aktif
         const nomorUrut = uniqueBarcodes.indexOf(item.barcode) + 1;
+        
+        // Cek entri pertama barcode untuk penomoran
         const isFirst = activeData.findIndex(d => d.barcode === item.barcode) === activeData.indexOf(item);
         
         const style = item.isLocked ? 'style="background: #e8f5e9;"' : '';
