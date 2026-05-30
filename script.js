@@ -4,7 +4,6 @@ let isCameraOn = false;
 let isFlashOn = false;
 const html5QrCode = new Html5Qrcode("reader");
 
-// 1. Cek Petugas
 function cekPetugas() {
     let nama = localStorage.getItem('namaPetugas');
     if (!nama) {
@@ -16,7 +15,6 @@ function cekPetugas() {
 }
 let petugas = cekPetugas();
 
-// 2. Load Database
 Papa.parse("item.csv", {
     download: true, header: true, skipEmptyLines: true,
     complete: function(results) {
@@ -28,7 +26,6 @@ Papa.parse("item.csv", {
     }
 });
 
-// 3. Fungsi Kamera
 async function toggleKamera() {
     const readerDiv = document.getElementById("reader");
     if (!isCameraOn) {
@@ -67,9 +64,34 @@ function updateTable() {
         const isDuplicate = nextItem && item.barcode === nextItem.barcode;
         tbody.innerHTML += `<tr>
             <td>${isDuplicate ? "" : "<b>" + (counter++) + ".</b>"} ${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
-            <td>${item.qty}</td>
+            <td>
+                <button onclick="ubahQty('${item.barcode}', -1)">-</button>
+                <span onclick="editManual('${item.barcode}')" style="cursor:pointer; font-weight:bold; text-decoration:underline;">${item.qty}</span>
+                <button onclick="ubahQty('${item.barcode}', 1)">+</button>
+            </td>
         </tr>`;
     });
+}
+
+function ubahQty(barcode, delta) {
+    const item = scanData.find(i => i.barcode === barcode);
+    if (item) {
+        item.qty = Math.max(0, item.qty + delta);
+        saveData();
+        updateTable();
+    }
+}
+
+function editManual(barcode) {
+    const item = scanData.find(i => i.barcode === barcode);
+    if (item) {
+        const newQty = prompt("Masukkan jumlah kuantitas:", item.qty);
+        if (newQty !== null && !isNaN(newQty)) {
+            item.qty = parseInt(newQty);
+            saveData();
+            updateTable();
+        }
+    }
 }
 
 function cariBarang(query) {
