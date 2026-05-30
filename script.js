@@ -48,29 +48,39 @@ function onScanSuccess(decodedText) {
     tambahBarang(decodedText, name);
 }
 
+// FUNGSI AUTO-LOCK BARU
 function tambahBarang(barcode, name) {
-    scanData.push({ 
-        barcode: barcode, nama: name, qty: 1, 
-        petugas: petugas, timestamp: new Date().toLocaleTimeString(),
-        isLocked: false 
-    });
+    // Kunci semua barang lama
+    scanData.forEach(item => item.isLocked = true);
+
+    const existing = scanData.find(i => i.barcode === barcode);
+    if (existing) {
+        existing.isLocked = false; // Buka kunci barang yang baru di-scan
+        existing.qty += 1;
+    } else {
+        scanData.push({ 
+            barcode: barcode, nama: name, qty: 1, 
+            petugas: petugas, timestamp: new Date().toLocaleTimeString(),
+            isLocked: false 
+        });
+    }
     saveData();
     updateTable();
     document.getElementById("result").innerText = `Terscan: ${name}`;
 }
 
-// 4. Update Tabel dengan Fitur Gembok
+// 4. Update Tabel
 function updateTable() {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
     
-    // Urutan: Barang yang belum dikunci di atas, dikunci di bawah
-    const sortedData = [...scanData].sort((a, b) => a.isLocked - b.isLocked);
+    const activeData = scanData.filter(item => item.qty > 0);
+    const sortedData = [...activeData].sort((a, b) => a.isLocked - b.isLocked);
     const uniqueBarcodes = [...new Set(scanData.map(item => item.barcode))];
 
     sortedData.reverse().forEach((item) => {
         const nomorUrut = uniqueBarcodes.indexOf(item.barcode) + 1;
-        const isFirst = scanData.findIndex(d => d.barcode === item.barcode) === scanData.indexOf(item);
+        const isFirst = activeData.findIndex(d => d.barcode === item.barcode) === activeData.indexOf(item);
         
         const style = item.isLocked ? 'style="background: #e8f5e9;"' : '';
         const lockIcon = item.isLocked ? "🔒" : "🔓";
@@ -117,7 +127,6 @@ function editManual(barcode) {
     }
 }
 
-// 5. Pencarian Manual (Drop-Up)
 function cariBarang(query) {
     const resultsDiv = document.getElementById("search-results");
     resultsDiv.innerHTML = "";
