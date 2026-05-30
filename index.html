@@ -2,26 +2,30 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stok Opname Scanner</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 10px; }
-        #reader { width: 100%; max-width: 500px; margin: auto; }
-        table { width: 100%; max-width: 500px; margin: 20px auto; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        .controls { margin-top: 20px; }
+        body { font-family: sans-serif; text-align: center; padding: 10px; background-color: #f4f4f9; }
+        #reader { width: 100%; max-width: 500px; margin: auto; border: 2px solid #333; }
+        #petugas-info { font-weight: bold; color: #2c3e50; margin: 10px; }
+        table { width: 100%; max-width: 500px; margin: 20px auto; border-collapse: collapse; background: white; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .controls { margin-top: 10px; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h3>Stok Opname</h3>
+    <h3>Program Stok Opname</h3>
+    <div id="petugas-info">Petugas: -</div>
     <div id="reader"></div>
-    <div id="result" style="font-weight: bold; margin: 15px;">Arahkan kamera ke barcode...</div>
+    <div id="result" style="margin: 15px; color: #e67e22;">Arahkan kamera ke barcode...</div>
     
     <div class="controls">
         <button id="flash-btn">Toggle Flash</button>
         <button onclick="exportCSV()">Ekspor CSV</button>
-        <button onclick="resetData()" style="color: red;">Reset</button>
+        <button onclick="resetData()" style="color: white; background-color: red;">Reset</button>
     </div>
 
     <table>
