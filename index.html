@@ -8,28 +8,30 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 10px; background-color: #f4f4f9; }
-        #reader { width: 100%; max-width: 500px; margin: auto; border: 2px solid #333; }
-        #petugas-info { font-weight: bold; color: #2c3e50; margin: 10px; }
+        #reader { width: 100%; max-width: 500px; margin: auto; display: none; }
+        #petugas-info { font-weight: bold; margin: 10px; }
         table { width: 100%; max-width: 500px; margin: 20px auto; border-collapse: collapse; background: white; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         .controls { margin-top: 10px; }
-        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        button { padding: 10px; margin: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
     <h3>Program Stok Opname</h3>
     <div id="petugas-info">Petugas: -</div>
-    <div id="reader"></div>
-    <div id="result" style="margin: 15px; color: #e67e22;">Arahkan kamera ke barcode...</div>
     
     <div class="controls">
+        <button id="toggle-camera-btn" onclick="toggleKamera()">Aktifkan Kamera</button>
         <button id="flash-btn">Toggle Flash</button>
         <button onclick="exportCSV()">Ekspor CSV</button>
         <button onclick="resetData()" style="color: white; background-color: red;">Reset</button>
     </div>
 
+    <div id="reader"></div>
+    <div id="result" style="margin: 15px; font-weight: bold;">Arahkan kamera ke barcode...</div>
+
     <table>
-        <thead><tr><th>Nama Barang</th><th>Qty</th></tr></thead>
+        <thead><tr><th>Nama Barang & Kode</th><th>Qty</th></tr></thead>
         <tbody id="table-body"></tbody>
     </table>
 
