@@ -32,13 +32,13 @@ Kode Barang,Nama Barang,Kuantitas
 8885013130249,Aice Milk Melon (50gr),0
 8885013132335,Aice Mochi Banana (45ml),0
 8885013130645,Aice Mochi Chocolate (30gr),0
-12345675,Aice Mochi cocolate Premium,0
 8885013130652,Aice Mochi Durian (45ml),0
 8885013131529,Aice Mochi Klepon (45ml),0
 8885013133264,Aice Mochi Mango (45ml),0
 12363,Aice Mochi Peach (45ml),0
 12345676,Aice Mochi Red Bean premium,0
 8885013130201,Aice Mochi Vanilla (30gr),0
+12345675,Aice Mochi cocolate Premium,0
 12364,Aice Moong Bean Stick (70ml),0
 8885013130546,Aice Nanas (65gr),0
 8997033170164,Aice Semangka (65gr),0
@@ -47,7 +47,7 @@ Kode Barang,Nama Barang,Kuantitas
 12345671,Aice Strawbery Max Cone,0
 8885013130706,Aice Sundae Chocolate Cup (100ml),0
 8885013130713,Aice Sundae Strawberry Cup (100ml),0
-8885013131864,Aice Sweet Corn New (52gr),0
+8885013134100,Aice Sweet Corn New (52gr),0
 8885013131123,Aice Taro Crispy (50ml),0
 12367,Aice Vanilla Chocolate Cup,0
 8992770033130,"Ajinomoto Masako Ayam (8,5gr)",0
@@ -87,6 +87,16 @@ Kode Barang,Nama Barang,Kuantitas
 8993207191294,Asimo Sosis Ayam Kombinasi (375gr),0
 8993207191300,Asimo Sosis Ayam Kombinasi (500gr),0
 8993207201801,Asimo Stick Kombinasi (250gr),0
+102898,BFM Cireng Ayam Pedas (8pcs),0
+102897,BFM Cireng Mozaella (8pcs),0
+102864,BFM Kebab Big Family Mozarela Sambal (10),0
+102863,BFM Kebab Big Family Mozarela Tomat (10),0
+102899,BFM Risol Beef (5pcs),0
+102896,BFM Rujak Cireng (20pcs),0
+102895,BFM Singkong Keju Merekah,0
+102919,BFM Tahu Baso Ori,0
+102918,BFM Tahu Baso Ranjau,0
+102917,BFM Udang Keju,0
 8999999533496,Bango Kecap Manis (25gr),0
 8999999593223,Bango Kecap Manis (265gr),0
 8999999100506,Bango Kecap Manis (700gr),0
@@ -108,9 +118,9 @@ Kode Barang,Nama Barang,Kuantitas
 8992984910500,Belibis Cabe Value (1kg),0
 8992984910128,Belibis Saus Cabe (135ml),0
 8992984910135,Belibis Saus Cabe (335ml),0
-8992984910111,Belibis saus cabe sachet,0
 8992984911026,Belibis Saus Tomat (135ml),0
 899298491102,Belibis Saus Tomat (335ml),0
+8992984910111,Belibis saus cabe sachet,0
 102912,Beras 818 Hijau (5kg),0
 8995184705112,Beras Hok-1 (5kg),0
 8995077001130,Beres Cocktail Merah (500gr),0
@@ -123,16 +133,6 @@ Kode Barang,Nama Barang,Kuantitas
 8997023078715,Bernardi Burger Wijen (6pcs),0
 8997207136552,Bernardi Plain Roll (6),0
 12383,Bernardi Spicy Chicken Wing (380gr),0
-102898,BFM Cireng Ayam Pedas (8pcs),0
-102897,BFM Cireng Mozaella (8pcs),0
-102864,BFM Kebab Big Family Mozarela Sambal (10),0
-102863,BFM Kebab Big Family Mozarela Tomat (10),0
-102899,BFM Risol Beef (5pcs),0
-102896,BFM Rujak Cireng (20pcs),0
-102895,BFM Singkong Keju Merekah,0
-102919,BFM Tahu Baso Ori,0
-102918,BFM Tahu Baso Ranjau,0
-102917,BFM Udang Keju,0
 8992628022156,Bimoli Minyak Goreng (1liter),0
 8992628020152,Bimoli Minyak Goreng (2L),0
 8719200170995,Blueband (200gr),0
@@ -200,13 +200,13 @@ Kode Barang,Nama Barang,Kuantitas
 8993207730127,Champ Beef Sausage (375gr),0
 8993207140384,Champ Burger (315gr),0
 8993207191621,Champ Chicken & Fish Siomay (180gr),0
-1234593,Champ Chicken ball (200gr),0
 8993207568294,Champ Chicken Ball (500gr),0
 12396,Champ Chicken Nugget 123 (500gr),0
 8993207800240,Champ Chicken Sausage (1kg),0
 8993207730035,Champ Chicken Sausage (375gr),0
 8993207568355,Champ Chicken Sausage (500gr),0
 8993207569574,Champ Chicken Stik (250gr),0
+1234593,Champ Chicken ball (200gr),0
 1234561,Champ Chiken Naget 123 (450gr),0
 1234598,Champ Chiken Nugget Stik (900gr),0
 12397,Champ Crunchy Hotss (300gr),0
@@ -245,8 +245,8 @@ Kode Barang,Nama Barang,Kuantitas
 123408,Cimanggis Special (50pcs),0
 123409,Cimanggis Urat (25pcs),0
 123406,Cireng Kriwil Nyi Iteung,0
-899999599263,Clear Anti Ketombe (10gr),0
 899999599249,Clear Anti Ketombe & Rambut Rontok (10gr),0
+899999599263,Clear Anti Ketombe (10gr),0
 899999599270,Clear Lemon Bersih & Segar (10gr),0
 899999599256,Clear Menthol Segar (10gr),0
 102903,Cumi Ring (500gr),0
@@ -288,7 +288,7 @@ Kode Barang,Nama Barang,Kuantitas
 8999898963219,Diamond UHT Strawberry (125ml),0
 8992510090706,Donat Pelangi Jumbo 10 (500gr),0
 123415,Dori Fillet (1kg),0
-123416,Eby Fry Tray,0
+123416,Eby Furai Tray,0
 123417,Eco Saos Extra Pedas (1kg),0
 1234587,Edmuk Bar Cheese (200gr),0
 1234582,Edmuk Bar Veggie (200gr),0
@@ -357,6 +357,7 @@ Kode Barang,Nama Barang,Kuantitas
 8995077000140,Fiva Sosis Cocktail (250gr),0
 102831,Frisian Flag Susu Full Cream 1 lt,0
 123441,Frozenland Mix Vegetable 3 Way,0
+102923,Frozenland Mix Vegetable 4 Way (1kg),0
 8996006862099,Fruit Tea Appel (250ml),0
 8996006862105,Fruit Tea Blackcurrant (250ml),0
 8996006862112,Fruit Tea Lemon (250ml),0
@@ -461,10 +462,10 @@ Kode Barang,Nama Barang,Kuantitas
 102738,Joday Mochi Durian,0
 102774,Joday Taro Ketan Hitam (36ml),0
 102869,Joyday Blueberry Crush,0
-8991728000064,Joyday Choco berry,0
 8991728000354,Joyday Choco Corn,0
 8991728000361,Joyday Choco Crunch,0
 8991728000873,Joyday Choco Malt,0
+8991728000064,Joyday Choco berry,0
 6907992823966,Joyday Cool Blueberry,0
 102857,Joyday Cotton Candy,0
 102733,Joyday Crunch Vanila Cookies (60ml),0
@@ -473,9 +474,9 @@ Kode Barang,Nama Barang,Kuantitas
 102716,Joyday Crunchy Double Chocolate,0
 102723,Joyday Crunchy Double Delight,0
 8991728000590,Joyday Cruncy Choco Lava,0
-6907992823867,Joyday Cruncy choco malt,0
 8991728000439,Joyday Cruncy Cookies Cream,0
 6907992826059,Joyday Cruncy Sweet Stawberry,0
+6907992823867,Joyday Cruncy choco malt,0
 102734,Joyday Double Scoop Chocolate Vanila,0
 8991728001054,Joyday Es Susu,0
 8991728001122,Joyday Fruits Galaxy,0
@@ -492,6 +493,7 @@ Kode Barang,Nama Barang,Kuantitas
 102872,Joyday Tropical Duo,0
 102722,Joyday Vanilla Milkshake,0
 6907992825076,Joyday Water melon appel,0
+102922,Kaluli Blueberry (130ml),0
 8997222640454,Kamil Bakso Sapi (250gr),0
 8997222640317,Kamil Bakso Sapi (750gr),0
 8997222640133,Kamil Sosis Bakar Ori Jumbo (500gr),0
@@ -513,8 +515,8 @@ Kode Barang,Nama Barang,Kuantitas
 8993200668984,Kanzler Single Baso Hot (65gr),0
 8993200668496,Kanzler Single Baso Original (65gr),0
 8993200668243,Kanzler Single Gochujang (60gr),0
-8993200347315,Kanzler Single mini cocktail (65gr),0
 8993200346318,Kanzler Single Sosis Keju (65gr),0
+8993200347315,Kanzler Single mini cocktail (65gr),0
 8993200345717,Kanzler Singles Hot (65gr),0
 8993200348312,Kanzler Singles Original (65gr),0
 8993200000036,Kanzler Singles Sosis Tomyum (60gr),0
@@ -634,9 +636,9 @@ Kode Barang,Nama Barang,Kuantitas
 8993093665237,Minyak Goreng Tawon (1lt),0
 8993093665244,Minyak Goreng Tawon (2lt),0
 8993093665220,Minyak Goreng Tawon (900ml),0
+8990074010062,Minyak WIjen Java Superfood sachet (10ml),0
 8990019000059,Minyak Wijen (100ml),0
 8997227872768,Minyak Wijen Java Superfood (135ml),0
-8990074010062,Minyak WIjen Java Superfood sachet (10ml),0
 9889756756734,Mirea Bakso Ikan Mix (500Gr),0
 102751,Mirea Bakso Udang (200gr),0
 102729,Mirea Baso Salmon (500gr),0
@@ -645,10 +647,10 @@ Kode Barang,Nama Barang,Kuantitas
 8990289379626,Mirea Dumpling Ayam (500gr),0
 8992510091116,Mirea Dumpling Cheese (500gr),0
 8990201379444,Mirea Dumpling Keju (200gr),0
-8997801379089,Mirea Fish ball (200gr),0
-102720,Mirea Fish ball (500gr),0
 9780201379624,Mirea Fish Roll (250gr),0
 9781234567897,Mirea Fish Roll (500gr),0
+8997801379089,Mirea Fish ball (200gr),0
+102720,Mirea Fish ball (500gr),0
 8992510986023,Mirea Otak-Otak Ikan (200gr),0
 8997802019625,Mirea Salmon Ball (200gr),0
 8997017563074,Mister Max Otak-Otak (250gr),0
@@ -803,6 +805,12 @@ Kode Barang,Nama Barang,Kuantitas
 8999999601348,Royco Kaldu Iga&Sumsum Sapi (8gr),0
 8999999192198,Royco Kaldu Iga&Sumsum Sapi (94gr),0
 543678,Royco Sapi RL2 (220gr),0
+8993110000652,SO Nice Nugget (250gr),0
+8993110001567,SO Nice Nugget (500gr),0
+8993110001581,SO Nice Nugget Stick (500gr),0
+8993110076916,SO Nice Sosis (1kg),0
+8993110052811,SO Nice Sosis (375gr),0
+8993110000669,SO Nice Stick (250gr),0
 123480,Sagara Beef Slice Teriyaki (500gr),0
 8992770061041,Sajiku Golden Crispy (200gr),0
 8992770084064,Sajiku Tepung Bumbu (220gr),0
@@ -839,8 +847,8 @@ Kode Barang,Nama Barang,Kuantitas
 123506,Salam Sosis Ayam Merah 40 (1kg),0
 8997222640034,Salam Sosis Ayam Short (1kg),0
 8997222640850,Salam Sosis Bakar Jumbo (500gr),0
-8997222641628,Salam Sosis Bakar kombinasi Jumbo 8 (600gr),0
 8997222641420,Salam Sosis Bakar Kombinasi Mini (500gr),0
+8997222641628,Salam Sosis Bakar kombinasi Jumbo 8 (600gr),0
 8997222640119,Salam Sosis Sapi Long (500gr),0
 102886,"Santap Crinkle Cut (2,5kg)",0
 8997011590052,"Santaps Shoestring (2,5Kg)",0
@@ -863,12 +871,6 @@ Kode Barang,Nama Barang,Kuantitas
 8993110000331,So Eco Naget Ayam (1kg),0
 8993110000126,So Eco Naget Ayam (500gr),0
 123521,So Eco Sosis Merah (750gr),0
-8993110000652,SO Nice Nugget (250gr),0
-8993110001567,SO Nice Nugget (500gr),0
-8993110001581,SO Nice Nugget Stick (500gr),0
-8993110076916,SO Nice Sosis (1kg),0
-8993110052811,SO Nice Sosis (375gr),0
-8993110000669,SO Nice Stick (250gr),0
 123524,Sumpit Import,0
 112233445,Sumpit Inti Bumi Kulit Dimsum 8cm,0
 102660,Sumpit Inti Bumi Kulit Pangsit 9x9,0
@@ -965,6 +967,8 @@ Kode Barang,Nama Barang,Kuantitas
 8997032113346,Umiami Minipao Strawberry (500gr),0
 9986260301006,Umiami Siomay (15pcs),0
 123547,Umiami Siomay (60pcs),0
+123550,VIT Air Mineral (330ml),0
+8992752011408,VIT Air Mineral (550ml),0
 8995555229230,Vigo Bakso Ayam 50,0
 123548,Vigo Bakso Mercon (50pcs),0
 123549,Vigo Bakso Sapi (50pcs),0
@@ -977,10 +981,8 @@ Kode Barang,Nama Barang,Kuantitas
 8995555218227,Vigo Sosis Bakar Jumbo (7pcs),0
 8995555218210,Vigo Sosis Bakar Mini (12pcs),0
 102920,Vigo Sosis Bakar mini 12+3 (600gr),0
-8995555815211,Vigo Sosis Sapi 15' (375gr),0
 8995555815518,Vigo Sosis SP (30pcs),0
-123550,VIT Air Mineral (330ml),0
-8992752011408,VIT Air Mineral (550ml),0
+8995555815211,Vigo Sosis Sapi 15' (375gr),0
 8992752011057,Vit Mineral (1500ml),0
 1230334,Vit Mineral (200ml),0
 8997207137313,Vitalia Burger (250gr),0
@@ -1006,13 +1008,12 @@ Kode Barang,Nama Barang,Kuantitas
 89980802607909,Yona Smoke Beef  (250gr),0
 8998080260716,Yona Smoke Beef (500gr),0
 123561,Yona Sosis Bakar Jumbo (500gr),0
-8998080266008,Yona Sosis Sapi Cocktail Merah (450gr),0
 123562,Yona Sosis SP Bakar Mini (500gr),0
+8998080266008,Yona Sosis Sapi Cocktail Merah (450gr),0
 102834,Yoshinoya Eko 500gr,0
 102833,Yoshinoya SP 500gr,0
 8997222640799,Zaitun Chicken Karage (500gr),0
 8997222641116,Zaitun Chicken Katsu (500gr),0
-102717,Zaitun chicken Pok-Pok (500gr),0
 8997222641246,Zaitun Crispy Crunch (250gr),0
 102647,Zaitun Crispy Nuget (400gr),0
 8997222641598,Zaitun Crispy Nugget (250gr),0
@@ -1020,3 +1021,4 @@ Kode Barang,Nama Barang,Kuantitas
 8997222640683,Zaitun Sosis Beef Breakfast (500gr),0
 8997222640171,Zaitun Spicy Wing (500gr),0
 8997222641154,Zaitun Stikie Cheese (500gr),0
+102717,Zaitun chicken Pok-Pok (500gr),0
