@@ -7,49 +7,132 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 10px; background-color: #E0F7FA; padding-bottom: 150px; }
-        #reader { width: 100%; max-width: 500px; margin: auto; display: none; }
-        #petugas-info { font-weight: bold; margin: 10px; color: #006064; }
+        body { 
+            font-family: sans-serif; 
+            text-align: center; 
+            padding: 10px; 
+            background-color: #E0F7FA; 
+            padding-bottom: 160px; 
+        }
+        #reader { 
+            width: 100%; 
+            max-width: 500px; 
+            margin: auto; 
+            display: none; 
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        #petugas-info { 
+            font-weight: bold; 
+            margin: 10px; 
+            color: #006064; 
+            font-size: 1.1em;
+        }
         table { 
-            width: 100%; max-width: 500px; margin: 20px auto; 
-            border-collapse: collapse; background: white; 
-            display: block; max-height: 300px; overflow-y: auto; 
+            width: 100%; 
+            max-width: 500px; 
+            margin: 20px auto; 
+            border-collapse: collapse; 
+            background: white; 
+            display: block; 
+            max-height: 320px; 
+            overflow-y: auto; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 4px;
         }
-        thead { position: sticky; top: 0; background: #B3E5FC; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        .controls { margin-top: 10px; }
-        button { padding: 8px 12px; margin: 3px; cursor: pointer; }
+        thead { 
+            position: sticky; 
+            top: 0; 
+            background: #B3E5FC; 
+            z-index: 10;
+        }
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 10px; 
+            text-align: left; 
+        }
+        .controls { 
+            margin-top: 10px; 
+            margin-bottom: 15px;
+        }
+        button { 
+            padding: 10px 14px; 
+            margin: 4px; 
+            cursor: pointer; 
+            font-weight: bold;
+            border: 1px solid #b2ebf2;
+            border-radius: 4px;
+            background: #ffffff;
+        }
+        #toggle-camera-btn {
+            background-color: #00838f;
+            color: white;
+        }
         
+        /* Area Input Manual di Bagian Bawah */
         #manual-input-area { 
-            position: fixed; bottom: 0; left: 0; width: 100%; 
-            background: #B3E5FC; padding: 10px; box-sizing: border-box; z-index: 1000;
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            background: #B3E5FC; 
+            padding: 12px; 
+            box-sizing: border-box; 
+            z-index: 1000;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
         }
-        #search-results { background: white; border: 1px solid #ddd; margin-bottom: 5px; border-radius: 5px; max-height: 150px; overflow-y: auto; }
-        #search-results button { display: block; width: 100%; padding: 10px; border: none; border-bottom: 1px solid #eee; background: white; text-align: left; }
+        #search-results { 
+            background: white; 
+            border: 1px solid #ddd; 
+            margin-bottom: 5px; 
+            border-radius: 5px; 
+            max-height: 150px; 
+            overflow-y: auto; 
+        }
+        #search-results button { 
+            display: block; 
+            width: 100%; 
+            padding: 12px; 
+            border: none; 
+            border-bottom: 1px solid #eee; 
+            background: white; 
+            text-align: left; 
+            margin: 0;
+            font-weight: normal;
+        }
+        #search-results button:active {
+            background-color: #e0f2f1;
+        }
     </style>
 </head>
 <body>
-    <h3>Program Stok Opnam AFJ</h3>
+
+    <h3>Program Stok Opname AFJ</h3>
     <div id="petugas-info">Petugas: -</div>
     
     <div class="controls">
         <button id="toggle-camera-btn" onclick="toggleKamera()">Aktifkan Kamera</button>
         <button id="flash-btn">Toggle Flash</button>
-        <button onclick="exportCSV()">Ekspor CSV</button>
-        <button onclick="resetData()" style="color: white; background-color: red;">Reset</button>
+        <button onclick="exportCSV()" style="background-color: #00c853; color: white;">Ekspor CSV</button>
+        <button onclick="resetDataManual()" style="color: white; background-color: #d50000;">Reset</button>
     </div>
 
     <div id="reader"></div>
-    <div id="result" style="margin: 15px; font-weight: bold; color: #006064;">Arahkan kamera...</div>
+    <div id="result" style="margin: 15px; font-weight: bold; color: #006064; min-height: 24px;">Arahkan kamera...</div>
 
     <table>
-        <thead><tr><th>Nama Barang | Kode | Waktu</th><th>Qty</th></tr></thead>
+        <thead>
+            <tr>
+                <th style="width: 70%;">Nama Barang | Kode | Waktu</th>
+                <th style="width: 30%; text-align: center;">Qty</th>
+            </tr>
+        </thead>
         <tbody id="table-body"></tbody>
     </table>
 
     <div id="manual-input-area">
         <div id="search-results"></div>
-        <input type="text" id="manual-search" placeholder="Cari nama barang manual..." onkeyup="cariBarang(this.value)" style="width: 90%; padding: 8px;">
+        <input type="text" id="manual-search" placeholder="Cari nama atau kode barang..." onkeyup="cariBarang(this.value)" style="width: 95%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px;">
     </div>
 
     <script src="script.js"></script>
