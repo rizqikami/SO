@@ -2,13 +2,17 @@ let inventory = {};
 let scanData = JSON.parse(localStorage.getItem('stokOpnameData')) || [];
 let isCameraOn = false;
 let isFlashOn = false;
+let isCooldown = false; // Flag untuk delay scan 10 detik
+let cooldownTimer = null;
 const html5QrCode = new Html5Qrcode("reader");
 
-// 1. Inisialisasi Petugas
+// 1. Inisialisasi Petugas Sesi SO
 function cekPetugas() {
     let nama = localStorage.getItem('namaPetugas');
     if (!nama) {
-        nama = prompt("Masukkan nama petugas:") || "Anonim";
+        nama = prompt("Masukkan nama petugas Stok Opname (SO):") || "";
+        nama = nama.trim();
+        if (!nama) nama = "Anonim";
         localStorage.setItem('namaPetugas', nama);
     }
     document.getElementById("petugas-info").innerText = "Petugas: " + nama;
@@ -16,84 +20,153 @@ function cekPetugas() {
 }
 let petugas = cekPetugas();
 
-// 2. Load Database
+// 2. Load Database Master Data (Aman dari Pergeseran Kolom / Urutan Header)
 Papa.parse("item.csv", {
-    download: true, header: true, skipEmptyLines: true,
+    download: true, 
+    header: true, 
+    skipEmptyLines: true,
     complete: function(results) {
         results.data.forEach(item => {
-            const keys = Object.keys(item);
-            inventory[item[keys[0]]] = item[keys[1]];
+            // Memanggil langsung nama header secara eksplisit demi akurasi data
+            const kode = item["Kode Barang"] ? item["Kode Barang"].trim() : null;
+            const nama = item["Nama Barang"] ? item["Nama Barang"].trim() : null;
+            if (kode && nama) {
+                inventory[kode] = nama;
+            }
         });
         updateTable();
+    },
+    error: function(err) {
+        console.error("Gagal memuat file item.csv. Pastikan file tersedia di folder yang sama.", err);
     }
 });
 
-// 3. Fungsi Kamera
+// 3. Kendali Kamera (FPS ditingkatkan agar pembacaan mulus)
 async function toggleKamera() {
     const readerDiv = document.getElementById("reader");
     if (!isCameraOn) {
         readerDiv.style.display = "block";
-        await html5QrCode.start({ facingMode: "environment" }, { fps: 2, qrbox: 250 }, onScanSuccess);
+        // FPS dinaikkan ke 12 agar tracking kamera responsif di handphone
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 12, qrbox: 250 }, 
+            onScanSuccess
+        );
         document.getElementById("toggle-camera-btn").innerText = "Matikan Kamera";
+        document.getElementById("toggle-camera-btn").style.backgroundColor = "#d50000";
     } else {
         await html5QrCode.stop();
         readerDiv.style.display = "none";
         document.getElementById("toggle-camera-btn").innerText = "Aktifkan Kamera";
+        document.getElementById("toggle-camera-btn").style.backgroundColor = "#00838f";
     }
     isCameraOn = !isCameraOn;
 }
 
+// Handler saat Kamera Berhasil Membaca Barcode
 function onScanSuccess(decodedText) {
-    const name = inventory[decodedText] || "Barang Tidak Ditemukan";
-    tambahBarang(decodedText, name);
+    if (isCooldown) return; // Abaikan jika masih dalam masa jeda 10 detik
+
+    const barcode = decodedText.trim();
+    const name = inventory[barcode];
+
+    // FILTER: Jika barang TIDAK ditemukan di item.csv, abaikan (catat manual di kertas)
+    if (!name) {
+        document.getElementById("result").innerHTML = `<span style="color: #d50000;">⚠️ [${barcode}] Tak Ditemukan! Catat di kertas.</span>`;
+        triggerCooldown(false, barcode); 
+        return;
+    }
+
+    // Jika valid, masukkan ke tabel data
+    tambahBarang(barcode, name);
+    triggerCooldown(true, name);
 }
 
-// 4. Fungsi Auto-Lock & Tambah Barang
+// Fungsi Jeda (Cooldown) Scan Selama 10 Detik dengan Indikator Hitung Mundur
+function triggerCooldown(isItemFound, itemLabel) {
+    isCooldown = true;
+    let sisaWaktu = 10;
+    const resultDiv = document.getElementById("result");
+
+    cooldownTimer = setInterval(() => {
+        sisaWaktu--;
+        if (sisaWaktu <= 0) {
+            clearInterval(cooldownTimer);
+            isCooldown = false;
+            resultDiv.innerHTML = "Kamera Siap... Arahkan ke Barcode";
+        } else {
+            if (isItemFound) {
+                resultDiv.innerHTML = `<span style="color: #00c853;">✔️ Terscan: ${itemLabel}</span><br><span style="color: #ff6d00;">Jeda Kamera: ${sisaWaktu} detik... (Hitung Fisik Sekarang)</span>`;
+            } else {
+                resultDiv.innerHTML = `<span style="color: #d50000;">⚠️ [${itemLabel}] Tak Ditemukan!</span><br><span style="color: #ff6d00;">Jeda Kamera: ${sisaWaktu} detik...</span>`;
+            }
+        }
+    }, 1000);
+}
+
+// 4. Logika Penambahan Barang & Update Terkini
 function tambahBarang(barcode, name) {
+    // Kunci semua riwayat scan sebelumnya
     scanData.forEach(item => item.isLocked = true);
 
     const existing = scanData.find(i => i.barcode === barcode);
+    const waktuSekarang = new Date().toLocaleTimeString('id-ID');
+
     if (existing) {
-        existing.isLocked = false;
+        existing.isLocked = false; // Buka kunci khusus item aktif ini
         existing.qty += 1;
+        existing.timestamp = waktuSekarang; // Update waktu ke ketukan terbaru
     } else {
         scanData.push({ 
-            barcode: barcode, nama: name, qty: 1, 
-            petugas: petugas, timestamp: new Date().toLocaleTimeString(),
+            barcode: barcode, 
+            nama: name, 
+            qty: 1, 
+            petugas: petugas, 
+            timestamp: waktuSekarang,
             isLocked: false 
         });
     }
     saveData();
     updateTable();
-    document.getElementById("result").innerText = `Terscan: ${name}`;
 }
 
-// 5. Update Tabel dengan Penomoran Dinamis
+// 5. Update Tabel (Data Terbaru & Unlocked Berada di Paling Atas)
 function updateTable() {
     const tbody = document.getElementById("table-body");
-    tbody.innerHTML = "";
+    tbody.innerHTML = ""; 
     
     const activeData = scanData.filter(item => item.qty > 0);
     const uniqueBarcodes = [...new Set(activeData.map(item => item.barcode))];
+    
+    // Urutkan: isLocked = false (Item yang baru di-scan) diletakkan paling atas tabel
     const sortedData = [...activeData].sort((a, b) => a.isLocked - b.isLocked);
 
-    sortedData.reverse().forEach((item) => {
+    let htmlRows = []; // Optimasi DOM: Menghindari penurunan performa/lag di HP
+
+    sortedData.forEach((item) => {
         const nomorUrut = uniqueBarcodes.indexOf(item.barcode) + 1;
         const isFirst = activeData.findIndex(d => d.barcode === item.barcode) === activeData.indexOf(item);
         
-        const style = item.isLocked ? 'style="background: #e8f5e9;"' : '';
+        const rowBg = item.isLocked ? 'style="background: #e8f5e9;"' : 'style="background: #fff9c4; font-weight: bold;"';
         const lockIcon = item.isLocked ? "🔒" : "🔓";
+        const disabledAttr = item.isLocked ? 'disabled' : '';
+        const underlineStyle = item.isLocked ? 'none' : 'underline';
         
-        tbody.innerHTML += `<tr ${style}>
-            <td>${isFirst ? "<b>" + nomorUrut + ".</b>" : ""} ${item.nama}<br><small>${item.barcode} | ${item.timestamp}</small></td>
+        htmlRows.push(`<tr ${rowBg}>
             <td>
-                <button onclick="ubahQty('${item.barcode}', -1)" ${item.isLocked ? 'disabled' : ''}>-</button>
-                <span onclick="!${item.isLocked} && editManual('${item.barcode}')" style="cursor:pointer; font-weight:bold; text-decoration:${item.isLocked ? 'none' : 'underline'};">${item.qty}</span>
-                <button onclick="ubahQty('${item.barcode}', 1)" ${item.isLocked ? 'disabled' : ''}>+</button>
-                <button onclick="toggleLock('${item.barcode}')" style="margin-left:5px;">${lockIcon}</button>
+                ${isFirst ? "<b>" + nomorUrut + ".</b>" : ""} ${item.nama}
+                <br><small style="color: #555;">${item.barcode} | ${item.timestamp}</small>
             </td>
-        </tr>`;
+            <td style="text-align: center; white-space: nowrap;">
+                <button onclick="ubahQty('${item.barcode}', -1)" ${disabledAttr}>-</button>
+                <span onclick="!${item.isLocked} && editManual('${item.barcode}')" style="cursor:pointer; font-size: 1.1em; padding: 0 5px; text-decoration: ${underlineStyle};">${item.qty}</span>
+                <button onclick="ubahQty('${item.barcode}', 1)" ${disabledAttr}>+</button>
+                <button onclick="toggleLock('${item.barcode}')" style="margin-left:5px; background: none; border: none;">${lockIcon}</button>
+            </td>
+        </tr>`);
     });
+
+    tbody.innerHTML = htmlRows.join(''); // Render sekaligus ke layar agar anti-lag
 }
 
 function toggleLock(barcode) {
@@ -117,8 +190,8 @@ function ubahQty(barcode, delta) {
 function editManual(barcode) {
     const item = scanData.find(i => i.barcode === barcode && !i.isLocked);
     if (item) {
-        const newQty = prompt("Masukkan jumlah kuantitas:", item.qty);
-        if (newQty !== null && !isNaN(newQty)) {
+        const newQty = prompt(`Ubah kuantitas untuk:\n${item.nama}`, item.qty);
+        if (newQty !== null && !isNaN(newQty) && newQty.trim() !== "") {
             item.qty = parseInt(newQty);
             saveData();
             updateTable();
@@ -126,44 +199,82 @@ function editManual(barcode) {
     }
 }
 
+// 6. Pencarian Manual Ganda (Bisa Cari Nama ATAU Kode Barang) + Fitur Debounce
+let debounceTimeout;
 function cariBarang(query) {
+    // Terapkan debounce 300ms agar HP tidak lag saat mengetik cepat
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+        eksekusiPencarian(query);
+    }, 300);
+}
+
+function eksekusiPencarian(query) {
     const resultsDiv = document.getElementById("search-results");
     resultsDiv.innerHTML = "";
-    if (query.length < 3) return;
-    if(isCameraOn) toggleKamera();
+    
+    if (query.trim().length < 3) return;
 
+    const queryLower = query.toLowerCase().trim();
+    
+    // Pencarian memeriksa kecocokan di Nama Barang ATAU Kode Barang
     const filtered = Object.entries(inventory).filter(([code, name]) => 
-        name.toLowerCase().includes(query.toLowerCase())
+        name.toLowerCase().includes(queryLower) || 
+        code.toLowerCase().includes(queryLower)
     );
+
     filtered.forEach(([code, name]) => {
         const btn = document.createElement("button");
-        btn.innerText = name;
+        btn.innerHTML = `📄 <b>${code}</b> - ${name}`;
         btn.onclick = () => {
             tambahBarang(code, name);
             resultsDiv.innerHTML = "";
             document.getElementById("manual-search").value = "";
+            // Geser layar fokus ke tabel atas agar terlihat hasilnya
+            document.getElementById("result").innerHTML = `Terpilih manual: ${name}`;
         };
         resultsDiv.appendChild(btn);
     });
 }
 
-function saveData() { localStorage.setItem('stokOpnameData', JSON.stringify(scanData)); }
+function saveData() { 
+    localStorage.setItem('stokOpnameData', JSON.stringify(scanData)); 
+}
 
+// Kontrol Flashlight Kamera
 document.getElementById("flash-btn").addEventListener("click", () => {
     isFlashOn = !isFlashOn;
-    html5QrCode.applyVideoConstraints({ advanced: [{ torch: isFlashOn }] });
+    html5QrCode.applyVideoConstraints({ advanced: [{ torch: isFlashOn }] }).catch(err => {
+        console.log("Flashlight tidak didukung di perangkat ini.");
+    });
 });
 
-// 6. Export CSV dengan Kolom Tanggal & Waktu
+// 7. Ekspor CSV dengan Tanggal Standar & Nama File Unik (Anti Overwrite)
 function exportCSV() {
+    if (scanData.length === 0) {
+        alert("Tidak ada data hasil SO yang bisa diekspor.");
+        return;
+    }
+
     const sekarang = new Date();
-    const tanggal = sekarang.toLocaleDateString(); 
+    
+    // Standarisasi format tanggal internasional: YYYY-MM-DD (Aman untuk Excel / Accurate)
+    const yyyy = sekarang.getFullYear();
+    const mm = String(sekarang.getMonth() + 1).padStart(2, '0');
+    const dd = String(sekarang.getDate()).padStart(2, '0');
+    const tanggalFormatted = `${yyyy}-${mm}-${dd}`;
+
+    // Format penanda waktu presisi: HHMMSS (Jam-Menit-Detik) untuk menghindari duplicate/overwrite file
+    const jam = String(sekarang.getHours()).padStart(2, '0');
+    const menit = String(sekarang.getMinutes()).padStart(2, '0');
+    const detik = String(sekarang.getSeconds()).padStart(2, '0');
+    const waktuFormatted = `${jam}${menit}${detik}`;
     
     const formattedData = scanData.map(item => ({
-        "Kode Barang": "'" + item.barcode, 
+        "Kode Barang": "'" + item.barcode, // Tanda petik tunggal agar kode berawalan angka 0 tidak hilang di Excel
         "Nama Barang": item.nama,
         "Kuantitas": item.qty,
-        "Tanggal": tanggal,
+        "Tanggal": tanggalFormatted,
         "Waktu": item.timestamp,
         "Petugas": item.petugas
     }));
@@ -171,14 +282,41 @@ function exportCSV() {
     const csv = Papa.unparse(formattedData);
     const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
+    
     const a = document.createElement('a');
-    a.href = url; a.download = `StokOpname_${petugas}_${tanggal.replace(/\//g, '-')}.csv`; a.click();
+    a.href = url; 
+    // Format Nama File Akhir: StokOpname_[NamaPetugas]_[YYYYMMDD]_[HHMMSS].csv
+    a.download = `StokOpname_${petugas}_${yyyy}${mm}${dd}_${waktuFormatted}.csv`; 
+    a.click();
+
+    // ALUR PENGAMANAN: Konfirmasi dua arah pasca ekspor sebelum melakukan auto-reset otomatis
+    setTimeout(() => {
+        const konfirmasiReset = confirm(
+            "Sistem sedang memproses unduhan file CSV.\n\n" +
+            "APAKAH FILE TERSEBUT SUDAH PASTI BERHASIL TERUNDUH DI HP ANDA?\n\n" +
+            "Jika Anda menekan 'OK', sistem akan otomatis me-reset semua hitungan data lapangan dan menghapus nama petugas saat ini."
+        );
+        if (konfirmasiReset) {
+            eksekusiResetSistem();
+        }
+    }, 1500); // Diberi jeda singkat agar unduhan file berjalan terlebih dahulu
 }
 
-function resetData() {
-    if(confirm("Hapus semua hasil scan dan reset nama petugas?")) {
-        localStorage.removeItem('stokOpnameData');
-        localStorage.removeItem('namaPetugas');
-        setTimeout(() => { location.reload(); }, 100);
+// Fungsi Tombol Kontrol Reset Manual
+function resetDataManual() {
+    if(confirm("Apakah Anda yakin ingin menghapus paksa seluruh hasil scan dan nama petugas?")) {
+        eksekusiResetSistem();
     }
+}
+
+// Inti Eksekusi Pembersihan Data & Reset Sesi Sesuai SOP
+function eksekusiResetSistem() {
+    if (isCameraOn) {
+        html5QrCode.stop().catch(() => {});
+    }
+    localStorage.removeItem('stokOpnameData');
+    localStorage.removeItem('namaPetugas');
+    setTimeout(() => { 
+        location.reload(); 
+    }, 200);
 }
