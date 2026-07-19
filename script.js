@@ -199,7 +199,7 @@ function editManual(barcode) {
     }
 }
 
-// 6. Pencarian Manual Ganda (Bisa Cari Nama ATAU Kode Barang) + Fitur Debounce
+// 6. Pencarian Manual Ganda (Bisa Cari Nama ATAU Kode Barang) + Fitur Debounce & Wildcard (%)
 let debounceTimeout;
 function cariBarang(query) {
     // Terapkan debounce 300ms agar HP tidak lag saat mengetik cepat
@@ -213,28 +213,52 @@ function eksekusiPencarian(query) {
     const resultsDiv = document.getElementById("search-results");
     resultsDiv.innerHTML = "";
     
-    if (query.trim().length < 3) return;
+    const queryTrimmed = query.trim();
+    if (queryTrimmed.length < 3) return;
 
-    const queryLower = query.toLowerCase().trim();
+    let regex;
+    // Jika mengandung karakter '%', ubah menjadi regex wildcard (contoh: buku%tulis -> buku.*tulis)
+    if (queryTrimmed.includes('%')) {
+        const escapedQuery = queryTrimmed.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"); // Escape karakter regex sensitif
+        const wildcardRule = "^" + escapedQuery.replace(/%/g, ".*");
+        regex = new RegExp(wildcardRule, "i");
+    } else {
+        // Jika pencarian normal, cari teks di mana saja (partial match)
+        regex = new RegExp(queryTrimmed.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"), "i");
+    }
     
-    // Pencarian memeriksa kecocokan di Nama Barang ATAU Kode Barang
+    // Pencarian memeriksa kecocokan regex di Nama Barang ATAU Kode Barang
     const filtered = Object.entries(inventory).filter(([code, name]) => 
-        name.toLowerCase().includes(queryLower) || 
-        code.toLowerCase().includes(queryLower)
+        regex.test(name) || regex.test(code)
     );
 
-    filtered.forEach(([code, name]) => {
+    // Batasi hasil pencarian maksimal 20 item agar HP tidak nge-lag saat merender list
+    const maxResults = filtered.slice(0, 20);
+
+    maxResults.forEach(([code, name]) => {
         const btn = document.createElement("button");
         btn.innerHTML = `📄 <b>${code}</b> - ${name}`;
         btn.onclick = () => {
             tambahBarang(code, name);
             resultsDiv.innerHTML = "";
-            document.getElementById("manual-search").value = "";
-            // Geser layar fokus ke tabel atas agar terlihat hasilnya
+            // Coba deteksi ID input pencarian yang valid di HTML
+            const inputSearch = document.getElementById("manual-search") || document.getElementById("searchItem");
+            if (inputSearch) inputSearch.value = "";
+            
             document.getElementById("result").innerHTML = `Terpilih manual: ${name}`;
         };
         resultsDiv.appendChild(btn);
     });
+
+    // Indikator jika barang yang cocok terlalu banyak di database CSV
+    if (filtered.length > 20) {
+        const info = document.createElement("small");
+        info.style.color = "#777";
+        info.style.display = "block";
+        info.style.padding = "5px";
+        info.innerText = `...dan ${filtered.length - 20} barang lainnya. Persempit pencarian Anda.`;
+        resultsDiv.appendChild(info);
+    }
 }
 
 function saveData() { 
