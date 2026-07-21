@@ -199,7 +199,7 @@ function editManual(barcode) {
     }
 }
 
-// 6. Pencarian Manual Ganda (Bisa Cari Nama ATAU Kode Barang) + Fitur Debounce & Wildcard (%)
+// 6. Pencarian Manual Ganda dengan Fitur Wildcard Multi-% (Sama Seperti Sistem PO)
 let debounceTimeout;
 function cariBarang(query) {
     // Terapkan debounce 300ms agar HP tidak lag saat mengetik cepat
@@ -214,18 +214,17 @@ function eksekusiPencarian(query) {
     resultsDiv.innerHTML = "";
     
     const queryTrimmed = query.trim();
-    if (queryTrimmed.length < 3) return;
+    if (queryTrimmed.length < 2) return;
 
-    let regex;
-    // Jika mengandung karakter '%', ubah menjadi regex wildcard (contoh: buku%tulis -> buku.*tulis)
-    if (queryTrimmed.includes('%')) {
-        const escapedQuery = queryTrimmed.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"); // Escape karakter regex sensitif
-        const wildcardRule = "^" + escapedQuery.replace(/%/g, ".*");
-        regex = new RegExp(wildcardRule, "i");
-    } else {
-        // Jika pencarian normal, cari teks di mana saja (partial match)
-        regex = new RegExp(queryTrimmed.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"), "i");
-    }
+    // === LOGIKA WILDCARD DINAMIS MULTI-% (SAMA SEPERTI PROGRAM PO) ===
+    // 1. Amankan karakter khusus regex selain %
+    const escaped = queryTrimmed.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    
+    // 2. Ubah SEMUA % menjadi .* (Pencocok kata/spasi dinamis)
+    const pattern = escaped.replace(/%/g, ".*");
+    
+    // 3. Regex case-insensitive tanpa patokan '^' agar pencocokan bebas di mana saja
+    const regex = new RegExp(pattern, "i");
     
     // Pencarian memeriksa kecocokan regex di Nama Barang ATAU Kode Barang
     const filtered = Object.entries(inventory).filter(([code, name]) => 
@@ -241,7 +240,6 @@ function eksekusiPencarian(query) {
         btn.onclick = () => {
             tambahBarang(code, name);
             resultsDiv.innerHTML = "";
-            // Coba deteksi ID input pencarian yang valid di HTML
             const inputSearch = document.getElementById("manual-search") || document.getElementById("searchItem");
             if (inputSearch) inputSearch.value = "";
             
