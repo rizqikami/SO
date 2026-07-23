@@ -6,6 +6,7 @@ let catalog = []; // Stores products loaded from item.csv
 let scannedItems = []; // Stores currently scanned/counted products
 let html5QrCode = null; // Html5Qrcode instance
 let isScanning = false; // Scanner running state
+let isScanPaused = false; // To prevent rapid-fire scanning
 
 // Init elements on DOM load
 document.addEventListener("DOMContentLoaded", () => {
@@ -372,24 +373,49 @@ let lastScannedBarcode = "";
 let lastScannedTime = 0;
 
 function handleScannedBarcode(barcode) {
+    if (isScanPaused) return; // Stop if we are in "pause" mode
+
     const now = Date.now();
-    // Debounce barcode scans (avoid double scan in 1.5 seconds)
-    if (barcode === lastScannedBarcode && (now - lastScannedTime) < 1500) {
+    
+    // Solusi Elegan: Cegah scan barang yang sama dalam waktu singkat (3 detik)
+    // Kecuali barang yang di-scan berbeda dari sebelumnya
+    if (barcode === lastScannedBarcode && (now - lastScannedTime) < 3000) {
         return;
     }
+
+    // Look up in loaded catalog
+    const product = catalog.find(item => item.barcode === barcode);
+    const productName = product ? product.name : `Produk Baru (${barcode})`;
+
+    // Jalankan Feedback Visual & Jeda
+    showScanFeedback(productName);
 
     lastScannedBarcode = barcode;
     lastScannedTime = now;
 
-    // Look up in loaded catalog
-    const product = catalog.find(item => item.barcode === barcode);
-
     if (product) {
         addOrIncrementItem(product.barcode, product.name, 1);
     } else {
-        // If not found in catalog, add it as a new product with barcode
-        addOrIncrementItem(barcode, `Produk Baru (Scan: ${barcode})`, 1, true);
+        addOrIncrementItem(barcode, productName, 1, true);
     }
+}
+
+// Fungsi untuk menampilkan feedback visual "Scan Berhasil" di layar kamera
+function showScanFeedback(name) {
+    isScanPaused = true;
+    const overlay = document.getElementById("scan-success-overlay");
+    const nameDisplay = document.getElementById("success-product-name");
+    
+    nameDisplay.innerText = name;
+    overlay.classList.remove("opacity-0", "pointer-events-none");
+    overlay.classList.add("opacity-100");
+
+    // Sembunyikan kembali setelah 2 detik dan aktifkan scanner lagi
+    setTimeout(() => {
+        overlay.classList.remove("opacity-100");
+        overlay.classList.add("opacity-0", "pointer-events-none");
+        isScanPaused = false;
+    }, 2000); 
 }
 
 // ==========================================
