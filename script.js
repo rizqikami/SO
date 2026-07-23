@@ -1,344 +1,762 @@
-let inventory = {};
-let scanData = JSON.parse(localStorage.getItem('stokOpnameData')) || [];
-let isCameraOn = false;
-let isFlashOn = false;
-let isCooldown = false; // Flag untuk delay scan 10 detik
-let cooldownTimer = null;
-const html5QrCode = new Html5Qrcode("reader");
+// File: script.js
+// Aplikasi Stock Opname Mobile v2.0 with Camera Barcode Scanner
 
-// 1. Inisialisasi Petugas Sesi SO
-function cekPetugas() {
-    let nama = localStorage.getItem('namaPetugas');
-    if (!nama) {
-        nama = prompt("Masukkan nama petugas Stok Opname (SO):") || "";
-        nama = nama.trim();
-        if (!nama) nama = "Anonim";
-        localStorage.setItem('namaPetugas', nama);
-    }
-    document.getElementById("petugas-info").innerText = "Petugas: " + nama;
-    return nama;
-}
-let petugas = cekPetugas();
+// Global States
+let catalog = []; // Stores products loaded from item.csv
+let scannedItems = []; // Stores currently scanned/counted products
+let html5QrCode = null; // Html5Qrcode instance
+let isScanning = false; // Scanner running state
 
-// 2. Load Database Master Data (Aman dari Pergeseran Kolom / Urutan Header)
-Papa.parse("item.csv", {
-    download: true, 
-    header: true, 
-    skipEmptyLines: true,
-    complete: function(results) {
-        results.data.forEach(item => {
-            // Memanggil langsung nama header secara eksplisit demi akurasi data
-            const kode = item["Kode Barang"] ? item["Kode Barang"].trim() : null;
-            const nama = item["Nama Barang"] ? item["Nama Barang"].trim() : null;
-            if (kode && nama) {
-                inventory[kode] = nama;
-            }
-        });
-        updateTable();
-    },
-    error: function(err) {
-        console.error("Gagal memuat file item.csv. Pastikan file tersedia di folder yang sama.", err);
-    }
-});
-
-// 3. Kendali Kamera (FPS ditingkatkan agar pembacaan mulus)
-async function toggleKamera() {
-    const readerDiv = document.getElementById("reader");
-    if (!isCameraOn) {
-        readerDiv.style.display = "block";
-        // FPS dinaikkan ke 12 agar tracking kamera responsif di handphone
-        await html5QrCode.start(
-            { facingMode: "environment" }, 
-            { fps: 12, qrbox: 250 }, 
-            onScanSuccess
-        );
-        document.getElementById("toggle-camera-btn").innerText = "Matikan Kamera";
-        document.getElementById("toggle-camera-btn").style.backgroundColor = "#d50000";
-    } else {
-        await html5QrCode.stop();
-        readerDiv.style.display = "none";
-        document.getElementById("toggle-camera-btn").innerText = "Aktifkan Kamera";
-        document.getElementById("toggle-camera-btn").style.backgroundColor = "#00838f";
-    }
-    isCameraOn = !isCameraOn;
-}
-
-// Handler saat Kamera Berhasil Membaca Barcode
-function onScanSuccess(decodedText) {
-    if (isCooldown) return; // Abaikan jika masih dalam masa jeda 10 detik
-
-    const barcode = decodedText.trim();
-    const name = inventory[barcode];
-
-    // FILTER: Jika barang TIDAK ditemukan di item.csv, abaikan (catat manual di kertas)
-    if (!name) {
-        document.getElementById("result").innerHTML = `<span style="color: #d50000;">⚠️ [${barcode}] Tak Ditemukan! Catat di kertas.</span>`;
-        triggerCooldown(false, barcode); 
-        return;
+// Init elements on DOM load
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Load Operator Name from local storage
+    const savedOperator = localStorage.getItem("so_operator_name");
+    if (savedOperator) {
+        document.getElementById("operator-name").value = savedOperator;
     }
 
-    // Jika valid, masukkan ke tabel data
-    tambahBarang(barcode, name);
-    triggerCooldown(true, name);
-}
-
-// Fungsi Jeda (Cooldown) Scan Selama 10 Detik dengan Indikator Hitung Mundur
-function triggerCooldown(isItemFound, itemLabel) {
-    isCooldown = true;
-    let sisaWaktu = 10;
-    const resultDiv = document.getElementById("result");
-
-    cooldownTimer = setInterval(() => {
-        sisaWaktu--;
-        if (sisaWaktu <= 0) {
-            clearInterval(cooldownTimer);
-            isCooldown = false;
-            resultDiv.innerHTML = "Kamera Siap... Arahkan ke Barcode";
-        } else {
-            if (isItemFound) {
-                resultDiv.innerHTML = `<span style="color: #00c853;">✔️ Terscan: ${itemLabel}</span><br><span style="color: #ff6d00;">Jeda Kamera: ${sisaWaktu} detik... (Hitung Fisik Sekarang)</span>`;
-            } else {
-                resultDiv.innerHTML = `<span style="color: #d50000;">⚠️ [${itemLabel}] Tak Ditemukan!</span><br><span style="color: #ff6d00;">Jeda Kamera: ${sisaWaktu} detik...</span>`;
-            }
-        }
-    }, 1000);
-}
-
-// 4. Logika Penambahan Barang & Update Terkini
-function tambahBarang(barcode, name) {
-    // Kunci semua riwayat scan sebelumnya
-    scanData.forEach(item => item.isLocked = true);
-
-    const existing = scanData.find(i => i.barcode === barcode);
-    const waktuSekarang = new Date().toLocaleTimeString('id-ID');
-
-    if (existing) {
-        existing.isLocked = false; // Buka kunci khusus item aktif ini
-        existing.qty += 1;
-        existing.timestamp = waktuSekarang; // Update waktu ke ketukan terbaru
-    } else {
-        scanData.push({ 
-            barcode: barcode, 
-            nama: name, 
-            qty: 1, 
-            petugas: petugas, 
-            timestamp: waktuSekarang,
-            isLocked: false 
-        });
-    }
-    saveData();
-    updateTable();
-}
-
-// 5. Update Tabel (Data Terbaru & Unlocked Berada di Paling Atas)
-function updateTable() {
-    const tbody = document.getElementById("table-body");
-    tbody.innerHTML = ""; 
-    
-    const activeData = scanData.filter(item => item.qty > 0);
-    const uniqueBarcodes = [...new Set(activeData.map(item => item.barcode))];
-    
-    // Urutkan: isLocked = false (Item yang baru di-scan) diletakkan paling atas tabel
-    const sortedData = [...activeData].sort((a, b) => a.isLocked - b.isLocked);
-
-    let htmlRows = []; // Optimasi DOM: Menghindari penurunan performa/lag di HP
-
-    sortedData.forEach((item) => {
-        const nomorUrut = uniqueBarcodes.indexOf(item.barcode) + 1;
-        const isFirst = activeData.findIndex(d => d.barcode === item.barcode) === activeData.indexOf(item);
-        
-        const rowBg = item.isLocked ? 'style="background: #e8f5e9;"' : 'style="background: #fff9c4; font-weight: bold;"';
-        const lockIcon = item.isLocked ? "🔒" : "🔓";
-        const disabledAttr = item.isLocked ? 'disabled' : '';
-        const underlineStyle = item.isLocked ? 'none' : 'underline';
-        
-        htmlRows.push(`<tr ${rowBg}>
-            <td>
-                ${isFirst ? "<b>" + nomorUrut + ".</b>" : ""} ${item.nama}
-                <br><small style="color: #555;">${item.barcode} | ${item.timestamp}</small>
-            </td>
-            <td style="text-align: center; white-space: nowrap;">
-                <button onclick="ubahQty('${item.barcode}', -1)" ${disabledAttr}>-</button>
-                <span onclick="!${item.isLocked} && editManual('${item.barcode}')" style="cursor:pointer; font-size: 1.1em; padding: 0 5px; text-decoration: ${underlineStyle};">${item.qty}</span>
-                <button onclick="ubahQty('${item.barcode}', 1)" ${disabledAttr}>+</button>
-                <button onclick="toggleLock('${item.barcode}')" style="margin-left:5px; background: none; border: none;">${lockIcon}</button>
-            </td>
-        </tr>`);
+    // Save operator name on change
+    document.getElementById("operator-name").addEventListener("input", (e) => {
+        localStorage.setItem("so_operator_name", e.target.value.trim());
     });
 
-    tbody.innerHTML = htmlRows.join(''); // Render sekaligus ke layar agar anti-lag
-}
-
-function toggleLock(barcode) {
-    const item = scanData.find(i => i.barcode === barcode);
-    if (item) {
-        item.isLocked = !item.isLocked;
-        saveData();
-        updateTable();
-    }
-}
-
-function ubahQty(barcode, delta) {
-    const item = scanData.find(i => i.barcode === barcode && !i.isLocked);
-    if (item) {
-        item.qty = Math.max(0, item.qty + delta);
-        saveData();
-        updateTable();
-    }
-}
-
-function editManual(barcode) {
-    const item = scanData.find(i => i.barcode === barcode && !i.isLocked);
-    if (item) {
-        const newQty = prompt(`Ubah kuantitas untuk:\n${item.nama}`, item.qty);
-        if (newQty !== null && !isNaN(newQty) && newQty.trim() !== "") {
-            item.qty = parseInt(newQty);
-            saveData();
-            updateTable();
+    // 2. Load scanned items from local storage (Auto-Save)
+    const savedScanned = localStorage.getItem("so_scanned_items");
+    if (savedScanned) {
+        try {
+            scannedItems = JSON.parse(savedScanned);
+            renderCountedItems();
+        } catch (e) {
+            console.error("Gagal memuat data tersimpan:", e);
+            scannedItems = [];
         }
     }
-}
 
-// 6. Pencarian Manual Ganda dengan Fitur Wildcard Multi-% (Sama Seperti Sistem PO)
-let debounceTimeout;
-function cariBarang(query) {
-    // Terapkan debounce 300ms agar HP tidak lag saat mengetik cepat
-    clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(() => {
-        eksekusiPencarian(query);
-    }, 300);
-}
+    // 3. Load Catalog
+    initCatalog();
 
-function eksekusiPencarian(query) {
-    const resultsDiv = document.getElementById("search-results");
-    resultsDiv.innerHTML = "";
-    
-    const queryTrimmed = query.trim();
-    if (queryTrimmed.length < 2) return;
+    // 4. Setup Camera / Scanner
+    initCameraList();
 
-    // === LOGIKA WILDCARD DINAMIS MULTI-% (SAMA SEPERTI PROGRAM PO) ===
-    // 1. Amankan karakter khusus regex selain %
-    const escaped = queryTrimmed.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    
-    // 2. Ubah SEMUA % menjadi .* (Pencocok kata/spasi dinamis)
-    const pattern = escaped.replace(/%/g, ".*");
-    
-    // 3. Regex case-insensitive tanpa patokan '^' agar pencocokan bebas di mana saja
-    const regex = new RegExp(pattern, "i");
-    
-    // Pencarian memeriksa kecocokan regex di Nama Barang ATAU Kode Barang
-    const filtered = Object.entries(inventory).filter(([code, name]) => 
-        regex.test(name) || regex.test(code)
-    );
+    // 5. Setup Action Event Listeners
+    document.getElementById("btn-toggle-scan").addEventListener("click", toggleScanner);
+    document.getElementById("toggle-flash").addEventListener("click", toggleFlashlight);
+    document.getElementById("catalog-file-input").addEventListener("change", handleManualCatalogUpload);
+    document.getElementById("product-search").addEventListener("input", handleSearchInput);
+    document.getElementById("clear-search").addEventListener("click", clearSearch);
+    document.getElementById("manual-name").addEventListener("input", updateManualAddButtonState);
+    document.getElementById("btn-manual-add").addEventListener("click", handleManualFormAdd);
+    document.getElementById("btn-export-csv").addEventListener("click", handleExportCSV);
+    document.getElementById("btn-reset-data").addEventListener("click", handleResetData);
+    updateManualAddButtonState();
 
-    // Batasi hasil pencarian maksimal 20 item agar HP tidak nge-lag saat merender list
-    const maxResults = filtered.slice(0, 20);
-
-    maxResults.forEach(([code, name]) => {
-        const btn = document.createElement("button");
-        btn.innerHTML = `📄 <b>${code}</b> - ${name}`;
-        btn.onclick = () => {
-            tambahBarang(code, name);
-            resultsDiv.innerHTML = "";
-            const inputSearch = document.getElementById("manual-search") || document.getElementById("searchItem");
-            if (inputSearch) inputSearch.value = "";
-            
-            document.getElementById("result").innerHTML = `Terpilih manual: ${name}`;
-        };
-        resultsDiv.appendChild(btn);
-    });
-
-    // Indikator jika barang yang cocok terlalu banyak di database CSV
-    if (filtered.length > 20) {
-        const info = document.createElement("small");
-        info.style.color = "#777";
-        info.style.display = "block";
-        info.style.padding = "5px";
-        info.innerText = `...dan ${filtered.length - 20} barang lainnya. Persempit pencarian Anda.`;
-        resultsDiv.appendChild(info);
-    }
-}
-
-function saveData() { 
-    localStorage.setItem('stokOpnameData', JSON.stringify(scanData)); 
-}
-
-// Kontrol Flashlight Kamera
-document.getElementById("flash-btn").addEventListener("click", () => {
-    isFlashOn = !isFlashOn;
-    html5QrCode.applyVideoConstraints({ advanced: [{ torch: isFlashOn }] }).catch(err => {
-        console.log("Flashlight tidak didukung di perangkat ini.");
+    // Hide search suggestions when clicking outside
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest("#product-search") && !e.target.closest("#search-suggestions")) {
+            document.getElementById("search-suggestions").classList.add("hidden");
+        }
     });
 });
 
-// 7. Ekspor CSV dengan Tanggal Standar & Nama File Unik (Anti Overwrite)
-function exportCSV() {
-    if (scanData.length === 0) {
-        alert("Tidak ada data hasil SO yang bisa diekspor.");
-        return;
+// ==========================================
+// 1. FEEDBACK & UX FUNCTIONS
+// ==========================================
+
+// Play scanner sound beep using Web Audio API
+function playSuccessBeep() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.type = "sine";
+        // Nice dual high beep like professional scanners
+        oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); 
+        gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.08); // 80ms beep
+    } catch (e) {
+        console.warn("Audio beep blocked or unsupported:", e);
     }
+}
 
-    const sekarang = new Date();
-    
-    // Standarisasi format tanggal internasional: YYYY-MM-DD (Aman untuk Excel / Accurate)
-    const yyyy = sekarang.getFullYear();
-    const mm = String(sekarang.getMonth() + 1).padStart(2, '0');
-    const dd = String(sekarang.getDate()).padStart(2, '0');
-    const tanggalFormatted = `${yyyy}-${mm}-${dd}`;
+// Mobile vibrate feedback
+function triggerVibration() {
+    if (navigator.vibrate) {
+        navigator.vibrate(80); // Vibrate 80ms
+    }
+}
 
-    // Format penanda waktu presisi: HHMMSS (Jam-Menit-Detik) untuk menghindari duplicate/overwrite file
-    const jam = String(sekarang.getHours()).padStart(2, '0');
-    const menit = String(sekarang.getMinutes()).padStart(2, '0');
-    const detik = String(sekarang.getSeconds()).padStart(2, '0');
-    const waktuFormatted = `${jam}${menit}${detik}`;
-    
-    const formattedData = scanData.map(item => ({
-        "Kode Barang": "'" + item.barcode, // Tanda petik tunggal agar kode berawalan angka 0 tidak hilang di Excel
-        "Nama Barang": item.nama,
-        "Kuantitas": item.qty,
-        "Tanggal": tanggalFormatted,
-        "Waktu": item.timestamp,
-        "Petugas": item.petugas
-    }));
-    
-    const csv = Papa.unparse(formattedData);
-    const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url; 
-    // Format Nama File Akhir: StokOpname_[NamaPetugas]_[YYYYMMDD]_[HHMMSS].csv
-    a.download = `StokOpname_${petugas}_${yyyy}${mm}${dd}_${waktuFormatted}.csv`; 
-    a.click();
-
-    // ALUR PENGAMANAN: Konfirmasi dua arah pasca ekspor sebelum melakukan auto-reset otomatis
+// Flash visual indicator on scan success
+function flashIndicator() {
+    const indicator = document.getElementById("scan-indicator");
+    indicator.classList.remove("hidden");
     setTimeout(() => {
-        const konfirmasiReset = confirm(
-            "Sistem sedang memproses unduhan file CSV.\n\n" +
-            "APAKAH FILE TERSEBUT SUDAH PASTI BERHASIL TERUNDUH DI HP ANDA?\n\n" +
-            "Jika Anda menekan 'OK', sistem akan otomatis me-reset semua hitungan data lapangan dan menghapus nama petugas saat ini."
-        );
-        if (konfirmasiReset) {
-            eksekusiResetSistem();
+        indicator.classList.add("hidden");
+    }, 500);
+}
+
+// ==========================================
+// 2. CATALOG MANAGEMENT (item.csv)
+// ==========================================
+
+// Try loading default catalog or from cache
+async function initCatalog() {
+    const statusText = document.getElementById("status-text");
+    const countBadge = document.getElementById("catalog-count");
+
+    // Try reading cache first
+    const cachedCatalog = localStorage.getItem("so_catalog_cache");
+    if (cachedCatalog) {
+        try {
+            catalog = JSON.parse(cachedCatalog);
+            setCatalogStatus("Berhasil (Cache)", "text-green-800", "bg-green-50", "border-green-200", catalog.length);
+            return;
+        } catch (e) {
+            console.warn("Gagal parse cache katalog:", e);
         }
-    }, 1500); // Diberi jeda singkat agar unduhan file berjalan terlebih dahulu
-}
+    }
 
-// Fungsi Tombol Kontrol Reset Manual
-function resetDataManual() {
-    if(confirm("Apakah Anda yakin ingin menghapus paksa seluruh hasil scan dan nama petugas?")) {
-        eksekusiResetSistem();
+    // Try fetching auto-load item.csv
+    try {
+        const response = await fetch("item.csv");
+        if (!response.ok) throw new Error("File default item.csv tidak ditemukan");
+        
+        const csvText = await response.text();
+        parseAndSetCatalog(csvText);
+    } catch (err) {
+        console.log("Auto fetch item.csv gagal (biasanya CORS pada file://):", err);
+        if (catalog.length === 0) {
+            setCatalogStatus("Pilih file item.csv...", "text-yellow-800", "bg-yellow-50", "border-yellow-200", 0);
+        }
     }
 }
 
-// Inti Eksekusi Pembersihan Data & Reset Sesi Sesuai SOP
-function eksekusiResetSistem() {
-    if (isCameraOn) {
-        html5QrCode.stop().catch(() => {});
+// Parse CSV and save to cache
+function parseAndSetCatalog(csvText) {
+    Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function (results) {
+            if (results.data && results.data.length > 0) {
+                // Map headers robustly
+                const sampleRow = results.data[0];
+                let barcodeKey = "";
+                let nameKey = "";
+
+                // Find matching keys
+                for (let key in sampleRow) {
+                    const normalizedKey = key.toLowerCase().trim();
+                    if (normalizedKey.includes("kode") || normalizedKey.includes("barcode") || normalizedKey.includes("sku") || normalizedKey.includes("code")) {
+                        barcodeKey = key;
+                    }
+                    if (normalizedKey.includes("nama") || normalizedKey.includes("name") || normalizedKey.includes("barang") || normalizedKey.includes("produk") || normalizedKey.includes("item")) {
+                        nameKey = key;
+                    }
+                }
+
+                // If mapping fails, fall back to indices
+                if (!barcodeKey || !nameKey) {
+                    const keys = Object.keys(sampleRow);
+                    barcodeKey = keys[0];
+                    nameKey = keys[1] || keys[0];
+                }
+
+                // Standardize products list
+                catalog = results.data.map(row => ({
+                    barcode: (row[barcodeKey] || "").toString().trim(),
+                    name: (row[nameKey] || "").toString().trim()
+                })).filter(item => item.name !== ""); // Skip empty names
+
+                // Save to cache (limit size to ~4.5MB to be safe, standard catalog fits easily)
+                try {
+                    localStorage.setItem("so_catalog_cache", JSON.stringify(catalog));
+                } catch (e) {
+                    console.warn("Katalog terlalu besar untuk localStorage cache:", e);
+                }
+
+                setCatalogStatus("Katalog Aktif", "text-green-800", "bg-green-50", "border-green-200", catalog.length);
+            } else {
+                setCatalogStatus("Katalog Kosong", "text-red-800", "bg-red-50", "border-red-200", 0);
+            }
+        },
+        error: function (err) {
+            console.error("Gagal parse CSV:", err);
+            setCatalogStatus("Error CSV", "text-red-800", "bg-red-50", "border-red-200", 0);
+        }
+    });
+}
+
+function setCatalogStatus(text, textColor, bgClass, borderClass, count) {
+    const statusBox = document.getElementById("catalog-status");
+    const statusText = document.getElementById("status-text");
+    const countBadge = document.getElementById("catalog-count");
+
+    // Remove old classes
+    statusBox.className = `text-xs px-3 py-2 rounded-lg flex items-center justify-between border ${textColor} ${bgClass} ${borderClass}`;
+    
+    // Set text
+    statusText.innerHTML = `<i class="fa-solid fa-circle-check text-green-600 mr-1.5"></i>${text}`;
+    if (count === 0) {
+        statusText.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-yellow-600 mr-1.5"></i>${text}`;
     }
-    localStorage.removeItem('stokOpnameData');
-    localStorage.removeItem('namaPetugas');
-    setTimeout(() => { 
-        location.reload(); 
-    }, 200);
+    countBadge.innerText = `${count} Item`;
+}
+
+// Handle manual file catalog picker upload
+function handleManualCatalogUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (event) {
+        parseAndSetCatalog(event.target.result);
+    };
+    reader.readAsText(file);
+}
+
+// ==========================================
+// 3. BARCODE SCANNER CAMERA (html5-qrcode)
+// ==========================================
+
+// Enumerate cameras and set to select dropdown
+function initCameraList() {
+    Html5Qrcode.getCameras().then(devices => {
+        const cameraSelect = document.getElementById("camera-select");
+        cameraSelect.innerHTML = '<option value="">-- Pilih Kamera --</option>';
+
+        if (devices && devices.length > 0) {
+            devices.forEach((device, index) => {
+                const option = document.createElement("option");
+                option.value = device.id;
+                
+                let label = device.label || `Kamera ${index + 1}`;
+                const cleanLabel = label.toLowerCase();
+                
+                // Prioritize back cameras for better focusing
+                if (cleanLabel.includes("back") || cleanLabel.includes("rear") || cleanLabel.includes("environment") || cleanLabel.includes("belakang")) {
+                    label += " (Rekomendasi)";
+                    option.selected = true; // Auto select rear camera
+                }
+                
+                option.text = label;
+                cameraSelect.appendChild(option);
+            });
+        } else {
+            cameraSelect.innerHTML = '<option value="">Kamera Tidak Ditemukan</option>';
+        }
+    }).catch(err => {
+        console.warn("Izin kamera ditolak atau tidak ada:", err);
+        document.getElementById("camera-select").innerHTML = '<option value="">Izin Kamera Ditolak</option>';
+    });
+}
+
+// Toggle Scanning start/stop
+function toggleScanner() {
+    const cameraSelect = document.getElementById("camera-select");
+    const cameraId = cameraSelect.value;
+
+    if (!cameraId) {
+        alert("Silakan pilih kamera terlebih dahulu.");
+        return;
+    }
+
+    if (isScanning) {
+        stopScanner();
+    } else {
+        startScanner(cameraId);
+    }
+}
+
+// Start Camera scanning
+function startScanner(cameraId) {
+    const readerContainer = document.getElementById("reader-container");
+    const btnText = document.getElementById("scan-btn-text");
+    const btnIcon = document.getElementById("scan-icon");
+    const cameraStatus = document.getElementById("camera-status");
+    const btnToggle = document.getElementById("btn-toggle-scan");
+
+    readerContainer.classList.remove("hidden");
+    
+    // Set state
+    isScanning = true;
+    btnText.innerText = "Hentikan Scan";
+    btnIcon.className = "fa-solid fa-stop";
+    btnToggle.className = "px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm rounded-lg btn-active shadow-sm flex items-center gap-1.5";
+    cameraStatus.innerText = "Aktif";
+    cameraStatus.className = "px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold";
+
+    html5QrCode = new Html5Qrcode("reader");
+
+    const scanConfig = {
+        fps: 10,
+        qrbox: function(width, height) {
+            // Adaptive square box for EAN / standard barcodes
+            const size = Math.min(width, height) * 0.75;
+            return { width: size, height: size };
+        },
+        aspectRatio: 1.0
+    };
+
+    html5QrCode.start(
+        cameraId,
+        scanConfig,
+        (decodedText, decodedResult) => {
+            // Success handler
+            handleScannedBarcode(decodedText);
+        },
+        (errorMessage) => {
+            // Scanning in progress (silent)
+        }
+    ).then(() => {
+        // Show flashlight control if available
+        const hasFlash = html5QrCode.getRunningTrackCapabilities().torch;
+        const flashBtn = document.getElementById("toggle-flash");
+        if (hasFlash) {
+            flashBtn.classList.remove("hidden");
+        } else {
+            flashBtn.classList.add("hidden");
+        }
+    }).catch(err => {
+        console.error("Gagal menyalakan kamera:", err);
+        alert("Gagal mengakses kamera. Pastikan izin kamera aktif.");
+        stopScanner();
+    });
+}
+
+// Stop scanning
+function stopScanner() {
+    const readerContainer = document.getElementById("reader-container");
+    const btnText = document.getElementById("scan-btn-text");
+    const btnIcon = document.getElementById("scan-icon");
+    const cameraStatus = document.getElementById("camera-status");
+    const btnToggle = document.getElementById("btn-toggle-scan");
+    const flashBtn = document.getElementById("toggle-flash");
+
+    flashBtn.classList.add("hidden");
+    readerContainer.classList.add("hidden");
+
+    isScanning = false;
+    btnText.innerText = "Mulai Scan";
+    btnIcon.className = "fa-solid fa-play";
+    btnToggle.className = "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-lg btn-active shadow-sm flex items-center gap-1.5";
+    cameraStatus.innerText = "Mati";
+    cameraStatus.className = "px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-semibold";
+
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            html5QrCode = null;
+        }).catch(err => {
+            console.error("Gagal stop camera:", err);
+        });
+    }
+}
+
+// Toggle Flashlight/Torch
+let flashOn = false;
+function toggleFlashlight() {
+    if (html5QrCode && isScanning) {
+        flashOn = !flashOn;
+        html5QrCode.applyVideoConstraints({
+            advanced: [{ torch: flashOn }]
+        }).catch(err => console.warn("Flashlight control failed:", err));
+    }
+}
+
+// When a barcode is successfully scanned
+let lastScannedBarcode = "";
+let lastScannedTime = 0;
+
+function handleScannedBarcode(barcode) {
+    const now = Date.now();
+    // Debounce barcode scans (avoid double scan in 1.5 seconds)
+    if (barcode === lastScannedBarcode && (now - lastScannedTime) < 1500) {
+        return;
+    }
+
+    lastScannedBarcode = barcode;
+    lastScannedTime = now;
+
+    // Look up in loaded catalog
+    const product = catalog.find(item => item.barcode === barcode);
+
+    if (product) {
+        addOrIncrementItem(product.barcode, product.name, 1);
+    } else {
+        // If not found in catalog, add it as a new product with barcode
+        addOrIncrementItem(barcode, `Produk Baru (Scan: ${barcode})`, 1, true);
+    }
+}
+
+// ==========================================
+// 4. MANUAL SEARCH & MANUAL ADD FORM
+// ==========================================
+
+// Handle autocomplete input
+function handleSearchInput(e) {
+    const query = e.target.value.trim();
+    const suggestionsBox = document.getElementById("search-suggestions");
+    const clearBtn = document.getElementById("clear-search");
+
+    if (!query) {
+        suggestionsBox.classList.add("hidden");
+        clearBtn.classList.add("hidden");
+        return;
+    }
+
+    clearBtn.classList.remove("hidden");
+
+    // Escape regex special characters except % to support wildcard searches
+    const escaped = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+    const pattern = escaped.replace(/%/g, ".*");
+    const regex = new RegExp(pattern, "i");
+
+    // Filter catalog matching name or barcode using regex
+    const matches = catalog.filter(item => 
+        regex.test(item.name) || 
+        regex.test(item.barcode)
+    ).slice(0, 15); // Show top 15 results
+
+    if (matches.length === 0) {
+        suggestionsBox.innerHTML = '<div class="p-3 text-xs text-gray-500 italic">Produk tidak ditemukan di katalog. Silakan ketik nama manual di form bawah.</div>';
+        suggestionsBox.classList.remove("hidden");
+        return;
+    }
+
+    suggestionsBox.innerHTML = "";
+    matches.forEach(product => {
+        const row = document.createElement("div");
+        row.className = "p-3 border-b border-gray-100 cursor-pointer hover:bg-blue-50 text-xs transition active:bg-blue-100";
+        row.innerHTML = `
+            <div class="font-bold text-gray-800">${product.name}</div>
+            <div class="text-gray-500 text-[10px] flex justify-between mt-0.5">
+                <span>Barcode: ${product.barcode || "Tidak ada"}</span>
+                <span class="text-blue-600 font-semibold flex items-center gap-0.5">
+                    <i class="fa-solid fa-plus-circle text-[11px]"></i> Pilih
+                </span>
+            </div>
+        `;
+        row.addEventListener("click", () => {
+            addOrIncrementItem(product.barcode, product.name, 1);
+            clearSearch();
+        });
+        suggestionsBox.appendChild(row);
+    });
+
+    suggestionsBox.classList.remove("hidden");
+}
+
+function clearSearch() {
+    document.getElementById("product-search").value = "";
+    document.getElementById("search-suggestions").classList.add("hidden");
+    document.getElementById("clear-search").classList.add("hidden");
+}
+
+function updateManualAddButtonState() {
+    const nameValue = document.getElementById("manual-name").value.trim();
+    const manualAddButton = document.getElementById("btn-manual-add");
+    if (nameValue.length === 0) {
+        manualAddButton.disabled = true;
+    } else {
+        manualAddButton.disabled = false;
+    }
+}
+
+// Handle adding custom/manual item from the form
+function handleManualFormAdd() {
+    const barcode = document.getElementById("manual-barcode").value.trim();
+    const name = document.getElementById("manual-name").value.trim();
+    const qtyInput = document.getElementById("manual-qty");
+    const qty = parseInt(qtyInput.value) || 1;
+
+    if (!name) {
+        alert("Nama barang wajib diisi!");
+        return;
+    }
+
+    // Add product
+    addOrIncrementItem(barcode, name, qty, true);
+
+    // Reset Form
+    document.getElementById("manual-barcode").value = "";
+    document.getElementById("manual-name").value = "";
+    qtyInput.value = 1;
+}
+
+// ==========================================
+// 5. STOK OPNAM SCANNED ITEMS LOGIC
+// ==========================================
+
+// Lock all items in the current list except one optional item
+function lockAllItems(exceptItem = null) {
+    scannedItems.forEach(item => {
+        if (exceptItem && item === exceptItem) {
+            item.locked = false;
+        } else {
+            item.locked = true;
+        }
+    });
+}
+
+// Add or increment item in the stock list
+function addOrIncrementItem(barcode, name, qty, isManual = false) {
+    // Generate a unique identifier if barcode is empty (manual items without barcodes)
+    const normalizedBarcode = barcode ? barcode : `MANUAL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    // Try finding in current scanned items list
+    let existingItem = scannedItems.find(item => {
+        if (barcode) {
+            return item.barcode === normalizedBarcode;
+        } else {
+            // Match items without barcodes by name to avoid splitting same products
+            return item.name === name;
+        }
+    });
+
+    if (existingItem) {
+        // Existing product found: lock all others and unlock this one.
+        lockAllItems(existingItem);
+        existingItem.lastUpdated = Date.now(); // Update timestamp so it pops to top
+    } else {
+        // New product: lock all previous items and add this one unlocked.
+        lockAllItems();
+        scannedItems.push({
+            barcode: normalizedBarcode,
+            name: name,
+            quantity: isManual ? qty : 0, // Manual entries keep their input quantity, scan-added items start at 0
+            isManual: isManual || !barcode,
+            locked: false, // New items default open so operator can enter quantity
+            lastUpdated: Date.now()
+        });
+    }
+
+    // Auto-Save progress
+    localStorage.setItem("so_scanned_items", JSON.stringify(scannedItems));
+
+    // UI effects
+    playSuccessBeep();
+    triggerVibration();
+    flashIndicator();
+
+    // Re-render
+    renderCountedItems();
+}
+
+// Edit item quantity directly
+function editItemQuantity(index, newQty) {
+    if (scannedItems[index].locked) return; // Prevent edit if quantity is locked
+    if (isNaN(newQty) || newQty < 0) {
+        newQty = 0;
+    }
+    scannedItems[index].quantity = newQty;
+    scannedItems[index].lastUpdated = Date.now();
+    localStorage.setItem("so_scanned_items", JSON.stringify(scannedItems));
+    renderCountedItems();
+}
+
+// Increment / Decrement helper
+function stepItemQuantity(index, step) {
+    if (scannedItems[index].locked) return; // Prevent adjustment if quantity is locked
+    const currentQty = scannedItems[index].quantity;
+    const newQty = currentQty + step;
+    if (newQty >= 0) {
+        editItemQuantity(index, newQty);
+    }
+}
+
+// Toggle Lock/Unlock item quantity
+function toggleLockItem(index) {
+    scannedItems[index].locked = !scannedItems[index].locked;
+    localStorage.setItem("so_scanned_items", JSON.stringify(scannedItems));
+    renderCountedItems();
+}
+
+// Delete item from counting list
+function deleteItem(index) {
+    const item = scannedItems[index];
+    if (confirm(`Hapus "${item.name}" dari daftar stok opnam?`)) {
+        scannedItems.splice(index, 1);
+        localStorage.setItem("so_scanned_items", JSON.stringify(scannedItems));
+        renderCountedItems();
+    }
+}
+
+// Sort items: Most recently updated/scanned first!
+function renderCountedItems() {
+    const container = document.getElementById("counted-items-container");
+    const emptyState = document.getElementById("empty-list-state");
+    const uniqueBadge = document.getElementById("unique-items-count");
+    const totalQtyBadge = document.getElementById("total-qty-count");
+
+    // Empty state toggle
+    if (scannedItems.length === 0) {
+        emptyState.classList.remove("hidden");
+        // Clear all list rows except empty state
+        const rows = container.querySelectorAll(".counted-row");
+        rows.forEach(r => r.remove());
+        uniqueBadge.innerText = "0";
+        totalQtyBadge.innerText = "0";
+        return;
+    }
+
+    emptyState.classList.add("hidden");
+
+    // Calculate totals
+    const uniqueCount = scannedItems.length;
+    const totalQty = scannedItems.reduce((acc, curr) => acc + curr.quantity, 0);
+    uniqueBadge.innerText = uniqueCount;
+    totalQtyBadge.innerText = totalQty;
+
+    // We sort the scannedItems array clone by lastUpdated descending to render
+    // but keep original indices by mapping.
+    const sortedItems = scannedItems
+        .map((item, originalIndex) => ({ ...item, originalIndex }))
+        .sort((a, b) => b.lastUpdated - a.lastUpdated);
+
+    // Render list HTML
+    container.innerHTML = "";
+    container.appendChild(emptyState); // Keep the empty state div inside container reference
+
+    sortedItems.forEach((item, index) => {
+        const isLatest = index === 0; // Highlight the absolute newest scan!
+        
+        const card = document.createElement("div");
+        card.className = `counted-row p-3 border rounded-xl flex items-center justify-between gap-3 shadow-sm transition-all duration-300 ${
+            isLatest ? "border-blue-500 bg-blue-50/70 ring-2 ring-blue-200" : "border-gray-200 bg-white"
+        }`;
+
+        // Tag label (Manual vs Katalog)
+        const isCustomBarcode = item.barcode.startsWith("MANUAL-");
+        const displayBarcode = isCustomBarcode ? "Tidak ada barcode" : item.barcode;
+        const tagHTML = item.isManual 
+            ? `<span class="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[9px] font-semibold uppercase">Manual</span>`
+            : `<span class="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[9px] font-semibold uppercase">Katalog</span>`;
+
+        // Styling for locked/unlocked state
+        const lockIconClass = item.locked ? "fa-lock text-red-600" : "fa-lock-open text-green-600";
+        const lockBgClass = item.locked ? "bg-red-50 border-red-200 hover:bg-red-100" : "bg-green-50 border-green-200 hover:bg-green-100";
+        const lockTooltip = item.locked ? "Kunci aktif (Klik untuk membuka)" : "Buka kunci (Klik untuk mengunci)";
+        const disabledAttr = item.locked ? "disabled" : "";
+        const disabledBtnClass = item.locked ? "opacity-30 cursor-not-allowed pointer-events-none" : "hover:bg-gray-100 active:bg-gray-200";
+        const inputBgClass = item.locked ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white text-gray-800";
+
+        card.innerHTML = `
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 mb-0.5">
+                    ${tagHTML}
+                    <span class="text-[10px] text-gray-500 font-mono">${displayBarcode}</span>
+                </div>
+                <h3 class="font-bold text-xs text-gray-800 truncate">${item.name}</h3>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <!-- Lock / Unlock Toggle Button -->
+                <button class="p-2 border rounded-lg transition active:scale-95 h-8 w-8 flex items-center justify-center ${lockBgClass}" 
+                    onclick="toggleLockItem(${item.originalIndex})" title="${lockTooltip}">
+                    <i class="fa-solid ${lockIconClass} text-xs"></i>
+                </button>
+
+                <!-- Quantity controls -->
+                <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden h-8 ${item.locked ? 'bg-gray-100' : 'bg-white'}">
+                    <button class="px-2.5 bg-gray-50 text-gray-600 font-bold text-sm transition ${disabledBtnClass}" 
+                        onclick="stepItemQuantity(${item.originalIndex}, -1)" ${disabledAttr}>
+                        <i class="fa-solid fa-minus text-[10px]"></i>
+                    </button>
+                    <input type="number" value="${item.quantity}" min="0" 
+                        class="w-10 text-center text-xs font-bold focus:outline-none h-full border-none p-0 ${inputBgClass}"
+                        onchange="editItemQuantity(${item.originalIndex}, parseInt(this.value))" ${disabledAttr}>
+                    <button class="px-2.5 bg-gray-50 text-gray-600 font-bold text-sm transition ${disabledBtnClass}" 
+                        onclick="stepItemQuantity(${item.originalIndex}, 1)" ${disabledAttr}>
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                    </button>
+                </div>
+
+                <!-- Delete button -->
+                <button class="p-2 text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition active:scale-95 h-8 w-8 flex items-center justify-center border border-red-100" 
+                    onclick="deleteItem(${item.originalIndex})" title="Hapus Barang">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                </button>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+// ==========================================
+// 6. EXPORT STOCK OPNAM TO CSV FILE
+// ==========================================
+function handleExportCSV() {
+    const operatorName = document.getElementById("operator-name").value.trim();
+
+    if (!operatorName) {
+        alert("PENTING: Harap isi Nama Operator terlebih dahulu di bagian atas!");
+        document.getElementById("operator-name").focus();
+        return;
+    }
+
+    if (scannedItems.length === 0) {
+        alert("Daftar stok opnam masih kosong. Silakan scan atau tambah barang terlebih dahulu.");
+        return;
+    }
+
+    // Get current date and time
+    const now = new Date();
+    const pad = (num) => String(num).padStart(2, "0");
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+    // Construct CSV Header metadata
+    let csvContent = "\uFEFF"; // UTF-8 BOM to prevent excel parsing glitches
+    csvContent += `"LAPORAN HASIL STOK OPNAM (SO)"\r\n`;
+    csvContent += `"Nama Operator / Pelaku SO:","${operatorName}"\r\n`;
+    csvContent += `"Tanggal Penyimpanan:","${dateStr}"\r\n`;
+    csvContent += `"Waktu Penyimpanan:","${timeStr}"\r\n`;
+    csvContent += `\r\n`; // Empty spacer line
+
+    // Table headers
+    csvContent += `"Kode Barang","Nama Barang","Jumlah Terhitung"\r\n`;
+
+    // Process scanned list rows
+    scannedItems.forEach(item => {
+        // Exclude internal generated MANUAL prefixes for custom items
+        const rawBarcode = item.barcode.startsWith("MANUAL-") ? "" : item.barcode;
+        
+        // Escape quotes inside product names for valid CSV
+        const escapedName = item.name.replace(/"/g, '""');
+        const escapedBarcode = rawBarcode.replace(/"/g, '""');
+
+        csvContent += `"${escapedBarcode}","${escapedName}","${item.quantity}"\r\n`;
+    });
+
+    // Create Download Trigger link
+    const filename = `SO_${operatorName.replace(/[^a-zA-Z0-9]/g, "_")}_${dateStr.replace(/-/g, "")}_${pad(now.getHours())}${pad(now.getMinutes())}.csv`;
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    link.className = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Update status indicator or alert success
+    alert(`Hasil Stok Opnam berhasil diekspor ke file:\n${filename}`);
+}
+
+// Reset/Clear All data
+function handleResetData() {
+    if (confirm("PENTING: Apakah Anda yakin ingin menghapus semua daftar barang yang dihitung? Semua data akan hilang jika belum diekspor ke CSV!")) {
+        scannedItems = [];
+        localStorage.removeItem("so_scanned_items");
+        renderCountedItems();
+        clearSearch();
+        alert("Semua data berhasil direset. Silakan mulai sesi stok opnam baru.");
+    }
 }

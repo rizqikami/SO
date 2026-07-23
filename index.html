@@ -2,139 +2,218 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stok Opname AFJ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aplikasi Stock Opname Mobile</title>
+    <!-- Tailwind CSS for modern responsive UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for beautiful icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PapaParse for easy CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- HTML5-QRCode for fast, robust camera barcode scanning -->
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { 
-            font-family: sans-serif; 
-            text-align: center; 
-            padding: 10px; 
-            background-color: #E0F7FA; 
-            padding-bottom: 160px; 
+        /* Touch friendly active states and styling */
+        .btn-active:active {
+            transform: scale(0.98);
         }
-        #reader { 
-            width: 100%; 
-            max-width: 500px; 
-            margin: auto; 
-            display: none; 
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        #petugas-info { 
-            font-weight: bold; 
-            margin: 10px; 
-            color: #006064; 
-            font-size: 1.1em;
-        }
-        table { 
-            width: 100%; 
-            max-width: 500px; 
-            margin: 20px auto; 
-            border-collapse: collapse; 
-            background: white; 
-            display: block; 
-            max-height: 320px; 
-            overflow-y: auto; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            border-radius: 4px;
-        }
-        thead { 
-            position: sticky; 
-            top: 0; 
-            background: #B3E5FC; 
-            z-index: 10;
-        }
-        th, td { 
-            border: 1px solid #ddd; 
-            padding: 10px; 
-            text-align: left; 
-        }
-        .controls { 
-            margin-top: 10px; 
-            margin-bottom: 15px;
-        }
-        button { 
-            padding: 10px 14px; 
-            margin: 4px; 
-            cursor: pointer; 
-            font-weight: bold;
-            border: 1px solid #b2ebf2;
-            border-radius: 4px;
-            background: #ffffff;
-        }
-        #toggle-camera-btn {
-            background-color: #00838f;
-            color: white;
-        }
-        
-        /* Area Input Manual di Bagian Bawah */
-        #manual-input-area { 
-            position: fixed; 
-            bottom: 0; 
-            left: 0; 
-            width: 100%; 
-            background: #B3E5FC; 
-            padding: 12px; 
-            box-sizing: border-box; 
-            z-index: 1000;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
-        }
-        #search-results { 
-            background: white; 
-            border: 1px solid #ddd; 
-            margin-bottom: 5px; 
-            border-radius: 5px; 
-            max-height: 150px; 
-            overflow-y: auto; 
-        }
-        #search-results button { 
-            display: block; 
-            width: 100%; 
-            padding: 12px; 
-            border: none; 
-            border-bottom: 1px solid #eee; 
-            background: white; 
-            text-align: left; 
-            margin: 0;
-            font-weight: normal;
-        }
-        #search-results button:active {
-            background-color: #e0f2f1;
+        #reader video {
+            border-radius: 0.75rem;
+            object-fit: cover !important;
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-100 font-sans min-h-screen pb-12">
 
-    <h3>Program Stok Opname AFJ</h3>
-    <div id="petugas-info">Petugas: -</div>
-    
-    <div class="controls">
-        <button id="toggle-camera-btn" onclick="toggleKamera()">Aktifkan Kamera</button>
-        <button id="flash-btn">Toggle Flash</button>
-        <button onclick="exportCSV()" style="background-color: #00c853; color: white;">Ekspor CSV</button>
-        <button onclick="resetDataManual()" style="color: white; background-color: #d50000;">Reset</button>
-    </div>
+    <!-- Top Navigation Header -->
+    <header class="bg-blue-600 text-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <i class="fa-solid fa-boxes-stacked text-yellow-300"></i>
+                <span>Stock Opname Mobile</span>
+            </h1>
+            <span id="scan-indicator" class="h-3 w-3 bg-green-400 rounded-full animate-ping hidden"></span>
+        </div>
+    </header>
 
-    <div id="reader"></div>
-    <div id="result" style="margin: 15px; font-weight: bold; color: #006064; min-height: 24px;">Arahkan kamera...</div>
+    <main class="container mx-auto px-4 py-4 max-w-lg space-y-4">
 
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 70%;">Nama Barang | Kode | Waktu</th>
-                <th style="width: 30%; text-align: center;">Qty</th>
-            </tr>
-        </thead>
-        <tbody id="table-body"></tbody>
-    </table>
+        <!-- Operator & Catalog Information Section -->
+        <section class="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+            <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                <i class="fa-solid fa-user-tag text-blue-500 mr-1"></i> Data Sesi & Katalog
+            </h2>
+            <div class="space-y-3">
+                <div>
+                    <label for="operator-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Operator (Pelaku SO):</label>
+                    <input type="text" id="operator-name" placeholder="Masukkan nama Anda..." 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Katalog Produk (item.csv):</label>
+                    <div class="flex flex-col gap-2">
+                        <!-- Auto-load & Upload indicators -->
+                        <div id="catalog-status" class="text-xs px-3 py-2 rounded-lg bg-yellow-50 text-yellow-800 border border-yellow-200 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-notch animate-spin text-yellow-600"></i>
+                                <span id="status-text">Memuat katalog default...</span>
+                            </span>
+                            <span id="catalog-count" class="font-bold">0 Item</span>
+                        </div>
+                        <label class="flex items-center justify-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer text-xs font-semibold text-gray-600">
+                            <i class="fa-solid fa-file-csv text-green-600 text-base"></i>
+                            <span>Unggah file item.csv manual (Jika Gagal)</span>
+                            <input type="file" id="catalog-file-input" accept=".csv" class="hidden">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    <div id="manual-input-area">
-        <div id="search-results"></div>
-        <input type="text" id="manual-search" placeholder="Cari nama atau kode barang..." onkeyup="cariBarang(this.value)" style="width: 95%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px;">
-    </div>
+        <!-- Camera Scanner Section -->
+        <section class="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                    <i class="fa-solid fa-camera text-red-500 mr-1"></i> Scan Barcode Kamera
+                </h2>
+                <div class="flex gap-2">
+                    <button id="toggle-flash" class="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs font-bold flex items-center gap-1 hover:bg-gray-300 hidden">
+                        <i class="fa-solid fa-bolt"></i> Flash
+                    </button>
+                    <span id="camera-status" class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-semibold">Mati</span>
+                </div>
+            </div>
+            
+            <div class="space-y-3">
+                <!-- Camera Selection Dropdown -->
+                <div class="flex gap-2">
+                    <select id="camera-select" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">-- Pilih Kamera --</option>
+                    </select>
+                    <button id="btn-toggle-scan" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-lg btn-active shadow-sm flex items-center gap-1.5">
+                        <i id="scan-icon" class="fa-solid fa-play"></i>
+                        <span id="scan-btn-text">Mulai Scan</span>
+                    </button>
+                </div>
 
+                <!-- Video scanner display -->
+                <div id="reader-container" class="relative overflow-hidden bg-gray-900 rounded-xl aspect-square w-full max-w-sm mx-auto flex items-center justify-center hidden">
+                    <div id="reader" class="w-full"></div>
+                    <!-- Overlay Target Frame -->
+                    <div class="absolute inset-0 border-2 border-red-500 border-dashed pointer-events-none opacity-40 m-8 rounded-lg"></div>
+                    <div class="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded">Arahkan barcode ke dalam kotak</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Product Search & Add Section (Manual Input) -->
+        <section class="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+            <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                <i class="fa-solid fa-keyboard text-green-500 mr-1"></i> Pencarian & Input Manual
+            </h2>
+            <div class="space-y-4">
+                <!-- Search catalog -->
+                <div class="relative">
+                    <label for="product-search" class="block text-xs font-medium text-gray-500 mb-1">Cari Produk dari Katalog (Ketik Nama / Barcode):</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <input type="text" id="product-search" placeholder="Contoh: ABC Kecap, 711844..." 
+                            class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                        <button id="clear-search" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 hidden">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </button>
+                    </div>
+                    <!-- Search suggestion results drop down -->
+                    <div id="search-suggestions" class="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-40 hidden divide-y divide-gray-100"></div>
+                </div>
+
+                <!-- Divider -->
+                <div class="flex items-center text-gray-400 text-xs">
+                    <hr class="flex-grow border-gray-200">
+                    <span class="px-2 font-semibold">ATAU INPUT BARU (BARANG TANPA BARCODE)</span>
+                    <hr class="flex-grow border-gray-200">
+                </div>
+
+                <!-- Manual Input Form for Custom Items -->
+                <form id="manual-add-form" class="space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-100" onsubmit="event.preventDefault();">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label for="manual-barcode" class="block text-[11px] font-medium text-gray-600 mb-1">Barcode / Kode (Opsional):</label>
+                            <input type="text" id="manual-barcode" placeholder="Ketik barcode/kosongkan..." 
+                                class="w-full px-2.5 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white">
+                        </div>
+                        <div>
+                            <label for="manual-name" class="block text-[11px] font-medium text-gray-600 mb-1">Nama Barang (Wajib):</label>
+                            <input type="text" id="manual-name" placeholder="Ketik nama produk..." 
+                                class="w-full px-2.5 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" required>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 items-end">
+                        <div class="w-1/3">
+                            <label for="manual-qty" class="block text-[11px] font-medium text-gray-600 mb-1">Jumlah:</label>
+                            <input type="number" id="manual-qty" value="1" min="1" 
+                                class="w-full px-2.5 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-center font-bold">
+                        </div>
+                        <button type="button" id="btn-manual-add" disabled class="flex-1 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold text-xs rounded-md shadow-sm flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-plus"></i> Tambah Barang
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Counted Items Section -->
+        <section class="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+            <div class="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check text-indigo-500"></i> Daftar Barang Dihitung
+                </h2>
+                <div class="text-right">
+                    <p class="text-[10px] text-gray-400">Total Jenis / Unit</p>
+                    <p class="text-xs font-bold text-gray-800">
+                        <span id="unique-items-count">0</span> Item / <span id="total-qty-count">0</span> Unit
+                    </p>
+                </div>
+            </div>
+
+            <!-- List of Counted Items -->
+            <div id="counted-items-container" class="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
+                <!-- Empty State -->
+                <div id="empty-list-state" class="text-center py-8 text-gray-400">
+                    <i class="fa-solid fa-clipboard-list text-4xl mb-2 text-gray-200"></i>
+                    <p class="text-xs">Belum ada barang yang diinput.</p>
+                    <p class="text-[10px] text-gray-400 mt-1">Silakan scan barcode atau cari produk di atas.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Actions / Export Section -->
+        <section class="flex flex-col gap-2 pt-2">
+            <button id="btn-export-csv" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl btn-active shadow-md flex items-center justify-center gap-2 transition duration-150">
+                <i class="fa-solid fa-file-export text-yellow-300 text-base"></i>
+                <span>EKSPOR HASIL STOK OPNAM (CSV)</span>
+            </button>
+            <div class="flex gap-2">
+                <button id="btn-reset-data" class="flex-1 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-semibold text-xs rounded-lg flex items-center justify-center gap-1 shadow-sm transition">
+                    <i class="fa-solid fa-trash-can"></i> Reset Semua Data
+                </button>
+                <a href="#operator-name" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold text-xs rounded-lg flex items-center justify-center gap-1 shadow-sm">
+                    <i class="fa-solid fa-arrow-up"></i> Ke Atas
+                </a>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer Status / Credit -->
+    <footer class="mt-8 text-center text-[10px] text-gray-400 px-4">
+        <p>Aplikasi Stock Opname Barcode Mobile v2.0</p>
+        <p class="mt-1">Disimpan otomatis secara lokal di HP Anda</p>
+    </footer>
+
+    <!-- Web Audio API Beep & Vibrate Scripts and App logic in script.js -->
     <script src="script.js"></script>
 </body>
 </html>
