@@ -326,6 +326,13 @@ function startScanner(cameraId) {
         console.error("Gagal menyalakan kamera:", err);
         alert("Gagal mengakses kamera. Pastikan izin kamera aktif.");
         stopScanner();
+
+        // Pindahkan kursor ke kolom pencarian jika kamera gagal
+        const searchInput = document.getElementById("product-search");
+        if (searchInput) {
+            searchInput.focus();
+            searchInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
     });
 }
 
@@ -385,18 +392,39 @@ function handleScannedBarcode(barcode) {
 
     // Look up in loaded catalog
     const product = catalog.find(item => item.barcode === barcode);
-    const productName = product ? product.name : `Produk Baru (${barcode})`;
-
-    // Jalankan Feedback Visual & Jeda
-    showScanFeedback(productName);
 
     lastScannedBarcode = barcode;
     lastScannedTime = now;
 
     if (product) {
-        addOrIncrementItem(product.barcode, product.name, 1);
+        // JIKA BARCODE DITEMUKAN DI KATALOG
+        showScanFeedback(product.name);
+        addOrIncrementItem(product.barcode, product.name, 1, false, "Scan Barcode");
     } else {
-        addOrIncrementItem(barcode, productName, 1, true);
+        // JIKA BARCODE GAGAL / TIDAK DITEMUKAN DI KATALOG
+        showScanFeedback(`Tidak Ditemukan: ${barcode}`);
+        triggerVibration();
+
+        // 1. Isikan barcode ke kolom pencarian produk
+        const searchInput = document.getElementById("product-search");
+        const manualBarcodeInput = document.getElementById("manual-barcode");
+
+        if (searchInput) {
+            searchInput.value = barcode;
+            // Pemicu event input agar pencarian langsung berjalan
+            searchInput.dispatchEvent(new Event("input"));
+            
+            // 2. Pindahkan kursor aktif ke kolom pencarian
+            searchInput.focus();
+
+            // 3. Scroll layar secara halus mengarah ke kolom pencarian
+            searchInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
+        // 4. Isikan juga kode barcode ke Form Input Manual sebagai cadangan
+        if (manualBarcodeInput) {
+            manualBarcodeInput.value = barcode;
+        }
     }
 }
 
@@ -467,7 +495,7 @@ function handleSearchInput(e) {
             </div>
         `;
         row.addEventListener("click", () => {
-            addOrIncrementItem(product.barcode, product.name, 1);
+            addOrIncrementItem(product.barcode, product.name, 1, false, "Pencarian Katalog");
             clearSearch();
         });
         suggestionsBox.appendChild(row);
@@ -505,7 +533,7 @@ function handleManualFormAdd() {
     }
 
     // Add product
-    addOrIncrementItem(barcode, name, qty, true);
+    addOrIncrementItem(barcode, name, qty, true, "Input Manual Baru");
 
     // Reset Form
     document.getElementById("manual-barcode").value = "";
@@ -529,7 +557,7 @@ function lockAllItems(exceptItem = null) {
 }
 
 // Add or increment item in the stock list
-function addOrIncrementItem(barcode, name, qty, isManual = false) {
+function addOrIncrementItem(barcode, name, qty, isManual = false, inputSource = "Scan Barcode") {
     // Generate a unique identifier if barcode is empty (manual items without barcodes)
     const normalizedBarcode = barcode ? barcode : `MANUAL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
@@ -555,6 +583,7 @@ function addOrIncrementItem(barcode, name, qty, isManual = false) {
             name: name,
             quantity: isManual ? qty : 0, // Manual entries keep their input quantity, scan-added items start at 0
             isManual: isManual || !barcode,
+            inputSource: inputSource,
             locked: false, // New items default open so operator can enter quantity
             lastUpdated: Date.now()
         });
@@ -745,18 +774,20 @@ function handleExportCSV() {
     csvContent += `\r\n`; // Empty spacer line
 
     // Table headers
-    csvContent += `"Kode Barang","Nama Barang","Jumlah Terhitung"\r\n`;
+    csvContent += `"Kode Barang","Nama Barang","Jumlah Terhitung","Metode Input"\r\n`;
 
     // Process scanned list rows
     scannedItems.forEach(item => {
         // Exclude internal generated MANUAL prefixes for custom items
         const rawBarcode = item.barcode.startsWith("MANUAL-") ? "" : item.barcode;
+        const sourceLabel = item.inputSource || (item.isManual ? "Input Manual Baru" : "Scan Barcode");
         
         // Escape quotes inside product names for valid CSV
         const escapedName = item.name.replace(/"/g, '""');
         const escapedBarcode = rawBarcode.replace(/"/g, '""');
+        const escapedSource = sourceLabel.replace(/"/g, '""');
 
-        csvContent += `"${escapedBarcode}","${escapedName}","${item.quantity}"\r\n`;
+        csvContent += `"${escapedBarcode}","${escapedName}","${item.quantity}","${escapedSource}"\r\n`;
     });
 
     // Create Download Trigger link
