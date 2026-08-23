@@ -105,40 +105,119 @@ function flashIndicator() {
 // 2. CATALOG MANAGEMENT (item.csv)
 // ==========================================
 
-// Try loading default catalog or from cache
-async function initCatalog() {
-    const statusText = document.getElementById("status-text");
-    const countBadge = document.getElementById("catalog-count");
-
-    // Try reading cache first
-    const cachedCatalog = localStorage.getItem("so_catalog_cache");
-    if (cachedCatalog) {
-        try {
-            catalog = JSON.parse(cachedCatalog);
-            setCatalogStatus("Berhasil (Cache)", "text-green-800", "bg-green-50", "border-green-200", catalog.length);
-            return;
-        } catch (e) {
-            console.warn("Gagal parse cache katalog:", e);
-        }
+// Optional remote catalog config for GitHub/raw hosting.
+// Example:
+// window.CATALOG_REMOTE_BASE_URL = "https://raw.githubusercontent.com/username/repo/main";
+// The app will fetch metadata and CSV from this base URL automatically.
+function getCatalogRemoteUrls() {
+    const base = (window.CATALOG_REMOTE_BASE_URL || "").replace(/\/+$/, "");
+    if (!base) {
+        return { metaUrl: "", csvUrl: "" };
     }
 
-    // Try fetching auto-load item.csv
+    return {
+        metaUrl: `${base}/catalog-meta.json`,
+        csvUrl: `${base}/item.csv`
+    };
+}
+
+async function fetchRemoteCatalogMeta(metaUrl) {
+    if (!metaUrl) return null;
+
+    const response = await fetch(metaUrl, {
+        cache: "no-cache",
+        headers: {
+            "Pragma": "no-cache",
+            "Cache-Control": "no-cache"
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error("Metadata katalog tidak tersedia");
+    }
+
+    const meta = await response.json();
+    return meta && meta.version ? String(meta.version) : null;
+}
+
+async function loadLocalCatalogFallback() {
     try {
-        const response = await fetch("item.csv");
+        const response = await fetch(`item.csv?_t=${Date.now()}`, {
+            cache: "no-cache",
+            headers: {
+                "Pragma": "no-cache",
+                "Cache-Control": "no-cache"
+            }
+        });
+
         if (!response.ok) throw new Error("File default item.csv tidak ditemukan");
-        
+
         const csvText = await response.text();
         parseAndSetCatalog(csvText);
     } catch (err) {
-        console.log("Auto fetch item.csv gagal (biasanya CORS pada file://):", err);
-        if (catalog.length === 0) {
+        console.log("Auto fetch item.csv gagal (offline atau CORS file://):", err);
+        if (catalog.length > 0) {
+            setCatalogStatus("Katalog Aktif (Cache Offline)", "text-green-800", "bg-green-50", "border-green-200", catalog.length);
+        } else {
             setCatalogStatus("Pilih file item.csv...", "text-yellow-800", "bg-yellow-50", "border-yellow-200", 0);
         }
     }
 }
 
+// Try loading default catalog or from cache with auto-update
+async function initCatalog() {
+    const cachedCatalog = localStorage.getItem("so_catalog_cache");
+    if (cachedCatalog) {
+        try {
+            catalog = JSON.parse(cachedCatalog);
+            setCatalogStatus("Memeriksa update...", "text-blue-800", "bg-blue-50", "border-blue-200", catalog.length);
+        } catch (e) {
+            console.warn("Gagal parse cache katalog:", e);
+        }
+    }
+
+    const remoteUrls = getCatalogRemoteUrls();
+
+    // Jika belum dikonfigurasi remote URL, gunakan fallback lokal seperti biasa.
+    if (!remoteUrls.metaUrl || !remoteUrls.csvUrl) {
+        await loadLocalCatalogFallback();
+        return;
+    }
+
+    try {
+        const remoteVersion = await fetchRemoteCatalogMeta(remoteUrls.metaUrl);
+        const localVersion = localStorage.getItem("so_catalog_version");
+
+        // Jika versi sama dan cache sudah ada, tidak perlu download ulang.
+        if (remoteVersion && localVersion && remoteVersion === localVersion && catalog.length > 0) {
+            setCatalogStatus("Katalog Aktif (Versi Terbaru)", "text-green-800", "bg-green-50", "border-green-200", catalog.length);
+            return;
+        }
+
+        const response = await fetch(`${remoteUrls.csvUrl}?_t=${Date.now()}`, {
+            cache: "no-cache",
+            headers: {
+                "Pragma": "no-cache",
+                "Cache-Control": "no-cache"
+            }
+        });
+
+        if (!response.ok) throw new Error("File default item.csv tidak ditemukan di server");
+
+        const csvText = await response.text();
+        parseAndSetCatalog(csvText, remoteVersion || localVersion || null);
+    } catch (err) {
+        console.warn("Remote catalog check gagal, memakai cache lokal:", err);
+        if (catalog.length > 0) {
+            setCatalogStatus("Katalog Aktif (Cache Offline)", "text-green-800", "bg-green-50", "border-green-200", catalog.length);
+        } else {
+            await loadLocalCatalogFallback();
+        }
+    }
+}
+
 // Parse CSV and save to cache
-function parseAndSetCatalog(csvText) {
+function parseAndSetCatalog(csvText, remoteVersion = null) {
     Papa.parse(csvText, {
         header: true,
         skipEmptyLines: true,
@@ -176,6 +255,9 @@ function parseAndSetCatalog(csvText) {
                 // Save to cache (limit size to ~4.5MB to be safe, standard catalog fits easily)
                 try {
                     localStorage.setItem("so_catalog_cache", JSON.stringify(catalog));
+                    if (remoteVersion) {
+                        localStorage.setItem("so_catalog_version", remoteVersion);
+                    }
                 } catch (e) {
                     console.warn("Katalog terlalu besar untuk localStorage cache:", e);
                 }
