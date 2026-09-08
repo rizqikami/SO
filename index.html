@@ -21,14 +21,20 @@
             border-radius: 0.75rem;
             object-fit: cover !important;
         }
+        /* CSS Khusus agar teks panjang melipat otomatis & tidak pernah terpotong di HP */
+        .text-wrap-full {
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans min-h-screen pb-12">
 
     <!-- Top Navigation Header -->
     <header class="bg-blue-600 text-white shadow-md sticky top-0 z-50">
-        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
-            <h1 class="text-xl font-bold flex items-center gap-2">
+        <div class="container mx-auto px-3 py-3 flex items-center justify-between">
+            <h1 class="text-lg sm:text-xl font-bold flex items-center gap-2">
                 <i class="fa-solid fa-boxes-stacked text-yellow-300"></i>
                 <span>Stock Opname Mobile</span>
             </h1>
@@ -36,33 +42,33 @@
         </div>
     </header>
 
-    <main class="container mx-auto px-4 py-4 max-w-lg space-y-4">
+    <main class="container mx-auto px-3 py-4 max-w-lg space-y-4">
 
         <!-- Operator & Catalog Information Section -->
-        <section class="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
-            <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+        <section class="bg-white rounded-xl shadow-sm p-3.5 border border-gray-200">
+            <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                 <i class="fa-solid fa-user-tag text-blue-500 mr-1"></i> Data Sesi & Katalog
             </h2>
             <div class="space-y-3">
                 <div>
-                    <label for="operator-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Operator (Pelaku SO):</label>
+                    <label for="operator-name" class="block text-xs font-medium text-gray-700 mb-1">Nama Operator (Pelaku SO):</label>
                     <input type="text" id="operator-name" placeholder="Masukkan nama Anda..." 
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Katalog Produk (item.csv):</label>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Katalog Produk (item.csv):</label>
                     <div class="flex flex-col gap-2">
                         <!-- Auto-load & Upload indicators -->
                         <div id="catalog-status" class="text-xs px-3 py-2 rounded-lg bg-yellow-50 text-yellow-800 border border-yellow-200 flex items-center justify-between">
-                            <span class="flex items-center gap-1.5">
-                                <i class="fa-solid fa-circle-notch animate-spin text-yellow-600"></i>
-                                <span id="status-text">Memuat katalog default...</span>
+                            <span class="flex items-center gap-1.5 min-w-0 pr-2">
+                                <i class="fa-solid fa-circle-notch animate-spin text-yellow-600 shrink-0"></i>
+                                <span id="status-text" class="text-wrap-full">Memuat katalog default...</span>
                             </span>
-                            <span id="catalog-count" class="font-bold">0 Item</span>
+                            <span id="catalog-count" class="font-bold shrink-0">0 Item</span>
                         </div>
-                        <label class="flex items-center justify-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer text-xs font-semibold text-gray-600">
-                            <i class="fa-solid fa-file-csv text-green-600 text-base"></i>
-                            <span>Unggah file item.csv manual (Jika Gagal)</span>
+                        <label class="flex items-center justify-center gap-2 px-3 py-2.5 border border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer text-xs font-semibold text-gray-600 text-center">
+                            <i class="fa-solid fa-file-csv text-green-600 text-base shrink-0"></i>
+                            <span class="text-wrap-full">Unggah file item.csv manual (Jika Gagal)</span>
                             <input type="file" id="catalog-file-input" accept=".csv" class="hidden">
                         </label>
                     </div>
@@ -71,9 +77,9 @@
         </section>
 
         <!-- Camera Scanner Section -->
-        <section class="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+        <section class="bg-white rounded-xl shadow-sm p-3.5 border border-gray-200">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     <i class="fa-solid fa-camera text-red-500 mr-1"></i> Scan Barcode Kamera
                 </h2>
                 <div class="flex gap-2">
@@ -104,18 +110,18 @@
                     <div class="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded">Arahkan barcode ke dalam kotak</div>
                     
                     <!-- Success Overlay Panel -->
-                    <div id="scan-success-overlay" class="absolute inset-0 bg-green-600/90 flex flex-col items-center justify-center text-white p-4 text-center transition-all duration-300 opacity-0 pointer-events-none z-50">
-                        <i class="fa-solid fa-circle-check text-5xl mb-2 animate-bounce"></i>
-                        <div class="font-bold text-lg leading-tight" id="success-product-name">TERDETEKSI!</div>
-                        <div class="text-[10px] mt-2 bg-white/20 px-2 py-1 rounded">Mohon tunggu sebentar...</div>
+                    <div id="scan-success-overlay" class="absolute inset-0 bg-green-600/95 flex flex-col items-center justify-center text-white p-4 text-center transition-all duration-300 opacity-0 pointer-events-none z-50">
+                        <i class="fa-solid fa-circle-check text-4xl mb-2 animate-bounce"></i>
+                        <div class="font-bold text-sm sm:text-base leading-snug text-wrap-full max-w-full" id="success-product-name">TERDETEKSI!</div>
+                        <div class="text-[10px] mt-2 bg-white/20 px-2.5 py-1 rounded">Mohon tunggu sebentar...</div>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- Product Search & Add Section (Manual Input) -->
-        <section class="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
-            <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+        <section class="bg-white rounded-xl shadow-sm p-3.5 border border-gray-200">
+            <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                 <i class="fa-solid fa-keyboard text-green-500 mr-1"></i> Pencarian & Input Manual
             </h2>
             <div class="space-y-4">
@@ -127,44 +133,44 @@
                             <i class="fa-solid fa-magnifying-glass"></i>
                         </span>
                         <input type="text" id="product-search" placeholder="Contoh: ABC Kecap, 711844..." 
-                            class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                            class="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                         <button id="clear-search" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 hidden">
                             <i class="fa-solid fa-circle-xmark"></i>
                         </button>
                     </div>
                     <!-- Search suggestion results drop down -->
-                    <div id="search-suggestions" class="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-40 hidden divide-y divide-gray-100"></div>
+                    <div id="search-suggestions" class="absolute left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl z-40 hidden divide-y divide-gray-100"></div>
                 </div>
 
                 <!-- Divider -->
-                <div class="flex items-center text-gray-400 text-xs">
+                <div class="flex items-center text-gray-400 text-[10px] sm:text-xs">
                     <hr class="flex-grow border-gray-200">
                     <span class="px-2 font-semibold">ATAU INPUT BARU (BARANG TANPA BARCODE)</span>
                     <hr class="flex-grow border-gray-200">
                 </div>
 
                 <!-- Manual Input Form for Custom Items -->
-                <form id="manual-add-form" class="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200" onsubmit="event.preventDefault();">
+                <form id="manual-add-form" class="space-y-3 bg-gray-50 p-3.5 rounded-xl border border-gray-200" onsubmit="event.preventDefault();">
                     <div class="space-y-3">
                         <div>
                             <label for="manual-barcode" class="block text-xs font-semibold text-gray-600 mb-1">Barcode / Kode (Opsional):</label>
                             <input type="text" id="manual-barcode" placeholder="Ketik barcode/kosongkan..." 
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm">
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm">
                         </div>
                         <div>
                             <label for="manual-name" class="block text-xs font-semibold text-gray-600 mb-1">Nama Barang (Wajib):</label>
                             <input type="text" id="manual-name" placeholder="Ketik nama produk..." 
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm" required>
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm" required>
                         </div>
                     </div>
-                    <div class="flex gap-3">
+                    <div class="flex gap-2">
                         <div class="w-1/3">
                             <label for="manual-qty" class="block text-xs font-semibold text-gray-600 mb-1">Jumlah:</label>
                             <input type="number" id="manual-qty" value="1" min="1" 
-                                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-center font-bold shadow-sm">
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-center font-bold shadow-sm">
                         </div>
                         <div class="flex-1 flex items-end">
-                            <button type="button" id="btn-manual-add" disabled class="w-full py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold text-sm rounded-lg shadow-md flex items-center justify-center gap-2 transition-all">
+                            <button type="button" id="btn-manual-add" disabled class="w-full py-2 border border-transparent bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold text-sm rounded-lg shadow-md flex items-center justify-center gap-2 transition-all">
                                 <i class="fa-solid fa-plus"></i> Tambah
                             </button>
                         </div>
@@ -174,9 +180,9 @@
         </section>
 
         <!-- Counted Items Section -->
-        <section class="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+        <section class="bg-white rounded-xl shadow-sm p-3.5 border border-gray-200">
             <div class="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
-                <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                     <i class="fa-solid fa-list-check text-indigo-500"></i> Daftar Barang Dihitung
                 </h2>
                 <div class="text-right">
@@ -188,7 +194,7 @@
             </div>
 
             <!-- List of Counted Items -->
-            <div id="counted-items-container" class="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
+            <div id="counted-items-container" class="space-y-2.5 max-h-[450px] overflow-y-auto pr-1">
                 <!-- Empty State -->
                 <div id="empty-list-state" class="text-center py-8 text-gray-400">
                     <i class="fa-solid fa-clipboard-list text-4xl mb-2 text-gray-200"></i>
